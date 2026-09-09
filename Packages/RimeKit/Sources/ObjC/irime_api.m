@@ -422,7 +422,8 @@ static RimeLeversApi *get_levers() {
   // 这里用 librime 公开 API 实现等价行为: 将编码输入替换为目标文本后,
   // 由引擎按新编码重新生成候选。
   @autoreleasepool {
-    const char *inputChars = RimeGetInput(session);
+    RimeApi *rimeApi = rime_get_api();
+    const char *inputChars = rimeApi->get_input(session);
     if (inputChars == NULL) {
       return NO;
     }
@@ -470,11 +471,11 @@ static RimeLeversApi *get_levers() {
     newInput[newLength] = '\0';
     // 逐字退格清空原编码
     for (size_t i = 0; i < inputLength; ++i) {
-      RimeProcessKey(session, 0xFF08 /* XK_BackSpace */, 0);
+      rimeApi->process_key(session, 0xFF08 /* XK_BackSpace */, 0);
     }
     // 重新键入新编码, 由引擎重新生成候选
     for (size_t i = 0; i < newLength; ++i) {
-      RimeProcessKey(session, newInput[i], 0);
+      rimeApi->process_key(session, newInput[i], 0);
     }
     free(newInput);
     return YES;

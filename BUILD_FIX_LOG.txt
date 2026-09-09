@@ -69,10 +69,13 @@ HamsterKeyboard、SbxlmKeyboard), 只是 SbxlmKeyboard 先编译完成而最先�
 修复: 不再调用不存在的私有符号。在
 Packages/RimeKit/Sources/ObjC/irime_api.m 的
 replaceInputKeys:withStartPos:AndCount:AndSession: 中改用 librime 公开
-API 实现等价行为:
-  - 读取当前编码输入(RimeGetInput), 按 (startPos, count) 重组编码为
-    前缀 + 新文本 + 后缀;
-  - 用 RimeProcessKey 逐字退格(XK_BackSpace = 0xFF08)清空原编码;
+API 实现等价行为(注: 本项目 vendored 的 rime_api.h 同时暴露传统
+Rime* 全局函数与 rime_get_api() 函数指针结构体, 输入读取/按键处理
+只能通过后者调用):
+  - 通过 rime_get_api()->get_input 读取当前编码输入, 按 (startPos,
+    count) 重组编码为前缀 + 新文本 + 后缀;
+  - 用 rime_get_api()->process_key 逐字退格(XK_BackSpace = 0xFF08)
+    清空原编码;
   - 再逐字键入新编码, 由引擎按新编码重新生成候选。
 并加入边界保护: 非 ASCII 编码/新文本时直接返回 NO, 不做破坏性改动。
 
@@ -87,4 +90,6 @@ librime 预编译包, 此段逻辑仍可正常使用。
 (触发事件: push 到 main), 确认全部步骤通过。
 运行记录:
   #5 34369289306 (885f288)     失败 -> 暴露 _RimeReplaceInput 问题
-  #6 待运行(本次修复推送触发)
+  #6 34370791453 (1e7bc3b)     失败 -> RimeGetInput 不存在于公开 API,
+                                    改用 rime_get_api()->get_input
+  #7 待运行(本次修复推送触发)
