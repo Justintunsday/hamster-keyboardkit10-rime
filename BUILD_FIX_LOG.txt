@@ -163,7 +163,7 @@ init(controller:), 只存在带 10 个参数的 designated initializer
   "RIME Sync using ${applicationName}"、"使用${applicationName}同步RIME"
   "RIME Deploy using ${applicationName}"、"使用${applicationName}重新部署RIME"
 
-九、补充: CI 产出 ipa 包(提交 xxx)
+九、补充: CI 产出 ipa 包(提交 86b15e8)
 -----------------------------------
 原工作流只做 xcodebuild build 编译验证, 不产出任何安装包。经确认,
 改为在每次 push 时顺带产出可下载的未签名 .ipa:
