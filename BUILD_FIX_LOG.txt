@@ -92,4 +92,32 @@ librime 预编译包, 此段逻辑仍可正常使用。
   #5 34369289306 (885f288)     失败 -> 暴露 _RimeReplaceInput 问题
   #6 34370791453 (1e7bc3b)     失败 -> RimeGetInput 不存在于公开 API,
                                     改用 rime_get_api()->get_input
-  #7 待运行(本次修复推送触发)
+  #7 34371364231 (8ebc2eb)     失败 -> RimeKit 已通过链接, 新错误为
+                                    KeyboardKit 二进制与 Xcode 16.4
+                                    (Swift 6.1.2/iOS 18.5 SDK) 不兼容
+  #8 待运行(本次修复推送触发)
+
+五、第三轮修复(KeyboardKit 预编译二进制与旧工具链不兼容)
+--------------------------------------------------------
+运行 #7 通过全部 Rime 相关编译与链接后, 失败点转移到 HamsterKeyboard
+target 编译 Swift 文件导入 KeyboardKit 模块:
+
+  error: failed to build module 'KeyboardKit'; this SDK is not supported
+  by the compiler (the SDK is built with 'Apple Swift version 6.3.3
+  effective-5.10', while this compiler is 'Apple Swift version 6.1.2
+  effective-5.10'). Please select a toolchain which matches the SDK.
+  以及: no such module 'FoundationModels'
+
+根因: 本项目通过 SwiftPM 依赖的 KeyboardKit 10.9.4
+(KeyboardKit/KeyboardKit.git) 在 Package.swift 中声明为预编译二进制
+(binaryTarget: KeyboardKit-Binaries 10.9.4), 该二进制由 Xcode 26 系列
+工具链(Swift 6.3.3 + iOS 26 SDK)构建, swiftinterface 引用了 iOS 26 SDK
+才存在的 FoundationModels 模块。而 CI 此前使用 macos-15-intel runner +
+Xcode 16.4(Swift 6.1.2 / iOS 18.5 SDK), 编译器版本低于构建 SDK 版本,
+且缺少 FoundationModels 模块, 无法编译该模块。
+
+修复: 将 CI 迁移到带 Xcode 26 系列工具链的 runner:
+  - .github/workflows/keyboardkit-macos-build.yml:
+      runs-on: macos-15-intel -> macos-26
+      xcode-version: '16.4' -> '26.6'
+  - .github/workflows/ci.yml: 同样更新(供手动归档构建使用)
