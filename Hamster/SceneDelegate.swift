@@ -13,6 +13,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate, UISceneDelegate {
   var window: UIWindow?
 
   func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+    AppLog.shared.info("scene willConnectTo begin")
     guard let windowScene = (scene as? UIWindowScene) else { return }
 
     if window == nil {
@@ -20,6 +21,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate, UISceneDelegate {
       window.rootViewController = HamsterAppDependencyContainer.shared.makeRootController()
       self.window = window
       window.makeKeyAndVisible()
+      AppLog.shared.info("scene willConnectTo: root controller ready")
     }
 
     /// 外部导入 zip 文件
