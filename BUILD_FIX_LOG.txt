@@ -194,7 +194,7 @@ init(controller:), 只存在带 10 个参数的 designated initializer
 (不落盘、需 Xcode/Console)与部署期 RIME stderr 文件日志, 键盘扩展
 运行时崩溃难以定位。
 
-新增(提交 99374b4 之后):
+新增(提交 a020bd6, 编译修正 950ca87 / 5f87e3c, 运行 #16 验证通过):
   - Packages/HamsterKit/Sources/Utilities/AppLog.swift
     文件型日志: 写入 AppGroup 共享目录 <group>/InputSchema/Logs
     (拿不到 AppGroup 时回退沙盒 Documents/Logs)。
