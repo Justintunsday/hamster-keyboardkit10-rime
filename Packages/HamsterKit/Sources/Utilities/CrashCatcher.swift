@@ -26,6 +26,17 @@ public final class CrashCatcher {
 
   // 预分配(install 时完成)的信号处理缓冲区, 避免在信号处理上下文中分配内存
   private static let scratch = UnsafeMutablePointer<UInt8>.allocate(capacity: 4096)
+
+  // Darwin.open 为可变参数 C 函数, Swift 无法直接调用;
+  // install 时通过 dlsym 解析三参数版本供信号处理器使用
+  private typealias OpenFunction = @convention(c) (UnsafePointer<CChar>, Int32, mode_t) -> Int32
+  private static let openWithMode: OpenFunction? = {
+    guard let handle = dlopen(nil, RTLD_LAZY),
+          let symbol = dlsym(handle, "open")
+    else { return nil }
+    return unsafeBitCast(symbol, to: OpenFunction.self)
+  }()
+
   private static let signals: [(Int32, String)] = [
     (SIGABRT, "SIGABRT"),
     (SIGBUS, "SIGBUS"),
@@ -54,8 +65,9 @@ public final class CrashCatcher {
     // 先启动会话日志(崩溃目录与日志目录相同)
     _ = AppLog.shared.start(role: resolvedRole)
 
-    // 预热 crash 目录路径
+    // 预热 crash 目录路径与 open 函数指针(避免在信号处理上下文中触发懒初始化)
     Self.crashDirectoryPath = AppLog.logDirectoryURL.path
+    _ = Self.openWithMode
 
     installUncaughtExceptionHandler()
     installSignalHandlers()
@@ -168,7 +180,8 @@ public final class CrashCatcher {
     for byte in roleBytes { buffer[contentOffset] = byte; contentOffset += 1 }
     copyASCII("\n崩溃前运行日志见同级 *-*.log; 完整调用栈请用 Xcode/Console 复现查看\n", into: buffer, offset: &contentOffset)
 
-    let fd = Darwin.open(buffer, O_WRONLY | O_CREAT | O_APPEND, 0o644)
+    guard let openFile = openWithMode else { return }
+    let fd = openFile(buffer, O_WRONLY | O_CREAT | O_APPEND, 0o644)
     guard fd >= 0 else { return }
     _ = Darwin.write(fd, buffer.advanced(by: pathEnd + 1), contentOffset - pathEnd - 1)
     Darwin.close(fd)
