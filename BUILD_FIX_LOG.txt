@@ -188,6 +188,52 @@ init(controller:), 只存在带 10 个参数的 designated initializer
   全部步骤通过: 下载 Rime frameworks -> 生成输入方案 -> 解析 SwiftPM
   包 -> Release-iphoneos 构建 Hamster / HamsterKeyboard / SbxlmKeyboard。
 
+十一、新增功能: 文件日志与崩溃捕获(用于查看崩溃原因)
+-----------------------------------------------------
+背景: 用户反馈无法查看安装包崩溃原因。原项目仅有 OSLog 系统日志
+(不落盘、需 Xcode/Console)与部署期 RIME stderr 文件日志, 键盘扩展
+运行时崩溃难以定位。
+
+新增(提交 99374b4 之后):
+  - Packages/HamsterKit/Sources/Utilities/AppLog.swift
+    文件型日志: 写入 AppGroup 共享目录 <group>/InputSchema/Logs
+    (拿不到 AppGroup 时回退沙盒 Documents/Logs)。
+    文件名为 <role>-yyyyMMdd-HHmmss[-n].log, 单文件 1MB 自动轮换,
+    目录内最多保留 30 个, 线程安全, 不阻塞业务线程。
+  - Packages/HamsterKit/Sources/Utilities/CrashCatcher.swift
+    崩溃捕获:
+      * 未捕获 NSException: 记录 name/reason/完整 callStackSymbols
+      * 信号(SIGABRT/SIGILL/SIGSEGV/SIGBUS/SIGFPE/SIGTRAP/SIGSYS):
+        用纯 POSIX 写入 crash-<role>-<时间戳>-<pid>.log(信号名、时间、
+        pid), 随后恢复默认信号处理使系统生成标准崩溃记录
+      * 可选 stderr 镜像(ConsoleMirror): Swift 运行时 fatal error 等
+        打到 stderr 的信息会先进入会话日志, 提供崩溃前线索
+    role 默认取当前进程 Bundle id 末段(Hamster/HamsterKeyboard/
+    SbxlmKeyboard), 便于区分是哪个进程崩溃。
+  - Packages/HamsterKit/Sources/Extensions/FileManager+.swift
+    新增 appGroupLogDirectoryURL。
+  - Packages/HamsterKeyboardKit/Sources/Diagnostics/HamsterDiagnostics.swift
+    键盘扩展侧统一入口(install + 快捷日志方法), 避免给扩展 target
+    追加包依赖。
+  - 接入点:
+      * 主 App: Hamster/AppDelegete.swift didFinishLaunching
+      * KeyboardKit10 键盘: HamsterKeyboard/KeyboardKit10InputViewController
+        .viewDidLoad
+      * 旧键盘控制器(SbxlmKeyboard 等): HamsterKeyboardKit
+        KeyboardInputViewController.viewDidLoad
+    键盘扩展开启 stderr 镜像。
+
+查看方法:
+  1. 打开主 App -> "文件" -> "键盘文件"标签 -> 进入 Logs 目录:
+     <role>-*.log 为运行日志(含控制台镜像), crash-*.log 为崩溃报告;
+     可在此直接预览或通过"上传"导出。
+  2. 崩溃的完整系统级调用栈仍以 Xcode/Console 或 iPhone "设置 ->
+     隐私与安全性 -> 分析与改进 -> 分析数据" 为准。
+
+十二、最终结果(含 ipa)
+------------------------
+运行 #13 (34412286164, 99374b4): 成功, 产出 Hamster-unsigned-ipa 工件
+
 运行记录汇总:
   #5  34369289306 (885f288)  失败 -> 暴露 _RimeReplaceInput 链接问题
   #6  34370791453 (1e7bc3b)  失败 -> RimeGetInput/RimeProcessKey 不存在,

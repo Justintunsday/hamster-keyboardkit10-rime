@@ -5,11 +5,15 @@
 //  Created by morse on 2023/6/5.
 //
 
+import HamsterKit
 import UIKit
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+    // 安装文件日志与崩溃捕获(主 App 进程)
+    CrashCatcher.setup(role: "Hamster")
+    AppLog.shared.info("AppDelegate didFinishLaunching")
     // Override point for customization after application launch.
     return true
   }

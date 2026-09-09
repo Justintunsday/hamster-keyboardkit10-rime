@@ -38,6 +38,9 @@ open class KeyboardInputViewController: UIInputViewController, KeyboardControlle
 
   override open func viewDidLoad() {
     super.viewDidLoad()
+    // 安装文件日志与崩溃捕获(进程内幂等)
+    HamsterDiagnostics.install()
+    HamsterDiagnostics.info("KeyboardInputViewController.viewDidLoad")
     // setupInitialWidth()
     // setupLocaleObservation()
     // setupNextKeyboardBehavior()

@@ -19,6 +19,8 @@ open class KeyboardKit10InputViewController: KeyboardKit.KeyboardInputViewContro
 
   override open func viewDidLoad() {
     super.viewDidLoad()
+    HamsterDiagnostics.install()
+    HamsterDiagnostics.info("KeyboardKit10InputViewController.viewDidLoad")
     observeRimeOutput()
   }
 
