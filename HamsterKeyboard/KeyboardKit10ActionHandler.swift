@@ -20,7 +20,18 @@ final class KeyboardKit10ActionHandler: KeyboardKit.StandardKeyboardActionHandle
   ) {
     self.inputController = controller
     self.rimeContext = rimeContext
-    super.init(controller: controller)
+    super.init(
+      controller: controller,
+      keyboardContext: controller.state.keyboardContext,
+      keyboardBehavior: controller.services.keyboardBehavior,
+      autocompleteContext: controller.state.autocompleteContext,
+      autocompleteService: controller.services.autocompleteService,
+      emojiContext: controller.state.emojiContext,
+      feedbackContext: controller.state.feedbackContext,
+      feedbackService: controller.services.feedbackService,
+      keyboardAppContext: controller.state.keyboardAppContext,
+      spacebarDragGestureHandler: controller.services.spacebarDragGestureHandler
+    )
   }
 
   override func action(
