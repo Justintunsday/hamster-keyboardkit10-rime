@@ -181,7 +181,9 @@ public final class CrashCatcher {
     copyASCII("\n崩溃前运行日志见同级 *-*.log; 完整调用栈请用 Xcode/Console 复现查看\n", into: buffer, offset: &contentOffset)
 
     guard let openFile = openWithMode else { return }
-    let fd = openFile(buffer, O_WRONLY | O_CREAT | O_APPEND, 0o644)
+    let fd = buffer.withMemoryRebound(to: CChar.self, capacity: 4096) {
+      openFile($0, O_WRONLY | O_CREAT | O_APPEND, 0o644)
+    }
     guard fd >= 0 else { return }
     _ = Darwin.write(fd, buffer.advanced(by: pathEnd + 1), contentOffset - pathEnd - 1)
     Darwin.close(fd)
