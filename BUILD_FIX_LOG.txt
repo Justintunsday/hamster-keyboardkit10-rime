@@ -163,7 +163,24 @@ init(controller:), 只存在带 10 个参数的 designated initializer
   "RIME Sync using ${applicationName}"、"使用${applicationName}同步RIME"
   "RIME Deploy using ${applicationName}"、"使用${applicationName}重新部署RIME"
 
-八、最终结果
+九、补充: CI 产出 ipa 包(提交 xxx)
+-----------------------------------
+原工作流只做 xcodebuild build 编译验证, 不产出任何安装包。经确认,
+改为在每次 push 时顺带产出可下载的未签名 .ipa:
+
+  - .github/workflows/keyboardkit-macos-build.yml 新增步骤:
+    1. Archive Hamster app: xcodebuild archive(CODE_SIGNING_ALLOWED=NO,
+       CODE_SIGNING_REQUIRED=NO, 归档到 Hamster.xcarchive)
+    2. Package unsigned ipa: 对 .app 执行 codesign --force --deep
+       --sign -(ad-hoc, 便于后续用 AltStore/Sideloadly 等工具再签名),
+       组装 Payload/Hamster.app 并压缩为 Hamster-unsigned.ipa
+    3. Upload ipa artifact: actions/upload-artifact@v4 上传
+       Hamster-unsigned-ipa
+
+说明: CI 无开发者证书/描述文件, 因此只能产出未签名(ad-hoc)ipa;
+签名与安装需在本地使用自己的证书完成。
+
+十、最终结果
 ------------
 运行 #11 (34374868394, afe0d71): 成功 (success)
   https://github.com/Justintunsday/hamster-keyboardkit10-rime/actions/runs/34374868394
@@ -186,4 +203,5 @@ init(controller:), 只存在带 10 个参数的 designated initializer
                                   ${applicationName}(见第七节)
   #11 34374868394 (afe0d71)  成功 -> 全部步骤通过
 
-本文件记录了自 d1b047c 之后为修复该工作流所做全部更改。
+本文件记录了自 d1b047c 之后为修复该工作流所做全部更改(含 ipa 打包产物的
+工作流变更)。
