@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
   name: "RimeKit",
   platforms: [
-    .iOS(.v15),
+    .iOS(.v16),
   ],
   products: [
     .library(name: "RimeKit", targets: ["RimeKit"]),
