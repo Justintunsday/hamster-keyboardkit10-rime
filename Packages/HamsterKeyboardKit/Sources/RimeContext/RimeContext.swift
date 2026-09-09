@@ -681,8 +681,8 @@ public extension RimeContext {
     }
 
     // 注意赋值顺序
-    self.userInputKey = userInputText
     self.commitText = commitText
+    self.userInputKey = userInputText
     self.suggestions = candidates
   }
 

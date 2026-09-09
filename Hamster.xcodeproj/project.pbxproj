@@ -7,6 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D10000000000000000000001 /* KeyboardKit in Frameworks */ = {isa = PBXBuildFile; productRef = D10000000000000000000002 /* KeyboardKit */; };
+		D1000000000000000000000A /* KeyboardKit in HamsterKeyboard Frameworks */ = {isa = PBXBuildFile; productRef = D10000000000000000000002 /* KeyboardKit */; };
+        D10000000000000000000007 /* KeyboardKit10ActionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000004 /* KeyboardKit10ActionHandler.swift */; };
+        D10000000000000000000008 /* HamsterKeyboardKit10View.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000005 /* HamsterKeyboardKit10View.swift */; };
+        D10000000000000000000009 /* KeyboardKit10InputViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000006 /* KeyboardKit10InputViewController.swift */; };
 		C00C26B72B0698E300E92F89 /* HamsterKeyboardKit in Frameworks */ = {isa = PBXBuildFile; productRef = C00C26B62B0698E300E92F89 /* HamsterKeyboardKit */; };
 		C00C26C72B069D6A00E92F89 /* boost_filesystem.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = C00C26BB2B069D6900E92F89 /* boost_filesystem.xcframework */; };
 		C00C26C82B069D6A00E92F89 /* boost_filesystem.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = C00C26BB2B069D6900E92F89 /* boost_filesystem.xcframework */; };
@@ -110,6 +115,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+        D10000000000000000000004 /* KeyboardKit10ActionHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardKit10ActionHandler.swift; sourceTree = "<group>"; };
+        D10000000000000000000005 /* HamsterKeyboardKit10View.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HamsterKeyboardKit10View.swift; sourceTree = "<group>"; };
+        D10000000000000000000006 /* KeyboardKit10InputViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardKit10InputViewController.swift; sourceTree = "<group>"; };
 		C000CA9D296EA72600EC5323 /* HamsterKeyboardInputViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HamsterKeyboardInputViewController.swift; sourceTree = "<group>"; };
 		C00749622ABAD48C00C5CD0A /* HamsterFileServer */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = HamsterFileServer; path = Packages/HamsterFileServer; sourceTree = "<group>"; };
 		C00C26BB2B069D6900E92F89 /* boost_filesystem.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = boost_filesystem.xcframework; sourceTree = "<group>"; };
@@ -182,6 +190,7 @@
 				C00C26E52B069D6A00E92F89 /* libmarisa.xcframework in Frameworks */,
 				C00C26E22B069D6A00E92F89 /* boost_locale.xcframework in Frameworks */,
 				C053ADC32A5D503200EA7EEE /* HamsteriOS in Frameworks */,
+				D10000000000000000000001 /* KeyboardKit in Frameworks */,
 				C00C26CD2B069D6A00E92F89 /* boost_system.xcframework in Frameworks */,
 				C00C26DC2B069D6A00E92F89 /* boost_atomic.xcframework in Frameworks */,
 				C00C26E82B069D6B00E92F89 /* librime.xcframework in Frameworks */,
@@ -194,6 +203,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D1000000000000000000000A /* KeyboardKit in HamsterKeyboard Frameworks */,
 				C00C26C82B069D6A00E92F89 /* boost_filesystem.xcframework in Frameworks */,
 				C00C26D72B069D6A00E92F89 /* libleveldb.xcframework in Frameworks */,
 				C00C26D12B069D6A00E92F89 /* libglog.xcframework in Frameworks */,
@@ -321,6 +331,9 @@
 				C071BECB2970072100E21FBC /* HamsterKeyboard.entitlements */,
 				C03E8040296D53650083E53A /* Info.plist */,
 				C000CA9D296EA72600EC5323 /* HamsterKeyboardInputViewController.swift */,
+                D10000000000000000000006 /* KeyboardKit10InputViewController.swift */,
+                D10000000000000000000004 /* KeyboardKit10ActionHandler.swift */,
+                D10000000000000000000005 /* HamsterKeyboardKit10View.swift */,
 				C03EC3A82B06670F00DB741E /* InfoPlist.strings */,
 			);
 			path = HamsterKeyboard;
@@ -409,6 +422,7 @@
 			name = Hamster;
 			packageProductDependencies = (
 				C053ADC22A5D503200EA7EEE /* HamsteriOS */,
+				D10000000000000000000002 /* KeyboardKit */,
 			);
 			productName = Hamster;
 			productReference = C03E8025296D4F4C0083E53A /* Hamster.app */;
@@ -429,6 +443,7 @@
 			name = HamsterKeyboard;
 			packageProductDependencies = (
 				C00C26B62B0698E300E92F89 /* HamsterKeyboardKit */,
+				D10000000000000000000002 /* KeyboardKit */,
 			);
 			productName = HamsterKeyboard;
 			productReference = C03E803C296D53650083E53A /* HamsterKeyboard.appex */;
@@ -490,6 +505,7 @@
 			);
 			mainGroup = C03E801C296D4F4C0083E53A;
 			packageReferences = (
+				D10000000000000000000003 /* XCRemoteSwiftPackageReference "keyboardkit" */,
 			);
 			productRefGroup = C03E8026296D4F4C0083E53A /* Products */;
 			projectDirPath = "";
@@ -553,6 +569,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				C0A602B32A185D88000DC924 /* HamsterKeyboardInputViewController.swift in Sources */,
+                D10000000000000000000009 /* KeyboardKit10InputViewController.swift in Sources */,
+                D10000000000000000000007 /* KeyboardKit10ActionHandler.swift in Sources */,
+                D10000000000000000000008 /* HamsterKeyboardKit10View.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -672,7 +691,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -733,7 +752,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -773,7 +792,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_UISupportsDocumentBrowser = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -817,7 +836,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_UISupportsDocumentBrowser = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -849,7 +868,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = HamsterKeyboard;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -881,7 +900,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = HamsterKeyboard;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -911,7 +930,7 @@
 				INFOPLIST_FILE = SbxlmKeyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = SbxlmKeyboard;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -943,7 +962,7 @@
 				INFOPLIST_FILE = SbxlmKeyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = SbxlmKeyboard;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1003,7 +1022,24 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+        D10000000000000000000003 /* XCRemoteSwiftPackageReference "keyboardkit" */ = {
+            isa = XCRemoteSwiftPackageReference;
+            repositoryURL = "https://github.com/KeyboardKit/KeyboardKit.git";
+            requirement = {
+                kind = exactVersion;
+                version = 10.9.4;
+            };
+        };
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
+        D10000000000000000000002 /* KeyboardKit */ = {
+            isa = XCSwiftPackageProductDependency;
+            package = D10000000000000000000003 /* XCRemoteSwiftPackageReference "keyboardkit" */;
+            productName = KeyboardKit;
+        };
+
 		C00C26B62B0698E300E92F89 /* HamsterKeyboardKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = HamsterKeyboardKit;

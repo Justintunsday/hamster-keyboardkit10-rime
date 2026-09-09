@@ -8,4 +8,4 @@
 import HamsterKeyboardKit
 import UIKit
 
-public class HamsterKeyboardInputViewController: KeyboardInputViewController {}
+public class HamsterKeyboardInputViewController: KeyboardKit10InputViewController {}

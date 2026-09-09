@@ -1,4 +1,4 @@
-// swift-tools-version: 5.8
+// swift-tools-version: 5.9
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -7,7 +7,8 @@ let package = Package(
   name: "HamsterKeyboardKit",
   defaultLocalization: "zh-Hans",
   platforms: [
-    .iOS(.v15),
+    // KeyboardKit 10.9.4 supports iOS 16 and later.
+    .iOS(.v16),
   ],
   products: [
     .library(name: "HamsterKeyboardKit", targets: ["HamsterKeyboardKit"]),
