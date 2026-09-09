@@ -16,7 +16,7 @@
 
 在 1.0 版本，很多伙伴 `clone` 项目后都无法直接运行，多数问题是被被卡在 `librime` 的编译下了，于是新版本将这步省略了。
 
-目前 [LibrimeKit](https://github.com/imfuxiao/LibrimeKit) 项目，只用来作为 [librime](https://github.com/rime/librime)  的编译项目，并使用 `Github Action` 将依赖的 Framework 编译并发布 Release。大家可以下载编译好的 Framework 使用，无需在为了编译环境而困扰。
+目前 [LibrimeKit v0.1.0](https://github.com/amorphobia/LibrimeKit/releases/tag/v0.1.0) 项目，只用来作为 [librime](https://github.com/rime/librime)  的编译项目，并使用 `Github Action` 将依赖的 Framework 编译并发布 Release。大家可以下载编译好的 Framework 使用，无需在为了编译环境而困扰。
 
 > 感谢 @amorphobia 为 LibrimeKit 提交的 Github Action 配置
 

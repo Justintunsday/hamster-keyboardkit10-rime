@@ -13,16 +13,8 @@ jobs:
         with:
           submodules: true
 
-      - name: Download Frameworks
-        uses: robinraju/release-downloader@v1.7
-        with:
-          repository: "imfuxiao/LibrimeKit"
-          latest: true
-          fileName: "Frameworks.tgz"
-
-      - name: Un-tar Frameworks
-        run: |
-          tar -xzf Frameworks.tgz -C Frameworks/..
+      - name: Download Rime frameworks
+        run: make framework
 
       - name: Build Schemas
         run: |

@@ -12,7 +12,7 @@ binary SDK; this integration uses the Essentials APIs and does not add a Pro
 license key or license file.
 
 The KeyboardKit package product is attached to both the Hamster app and
-	he HamsterKeyboard extension because the extension owns the KeyboardKit 10
+The HamsterKeyboard extension because the extension owns the KeyboardKit 10
 controller and view. Each target has its own PBXBuildFile record, so Xcode does
 not reuse a framework phase entry across targets. All project targets are set to
 iOS 16, which is the minimum supported deployment target of KeyboardKit 10.9.4.

@@ -4,24 +4,24 @@
 #  Hamster
 #
 #  Created by morse on 2023/9/28.
-#  
+#
 set -e
 
-OUTPUT="${CI_PRIMARY_REPOSITORY_PATH}/Frameworks"
+REPOSITORY_ROOT="${CI_PRIMARY_REPOSITORY_PATH:-$PWD}"
 
-# 下载依赖的 librime framework
-LibrimeKitVersion="2.3.0"
-mkdir -p $OUTPUT
-rm -rf $OUTPUT/*.xcframwork && (
-  curl -OL https://github.com/imfuxiao/LibrimeKit/releases/download/${LibrimeKitVersion}/Frameworks.tgz
-  mkdir -p $OUTPUT
-  tar -zxf Frameworks.tgz -C $OUTPUT/..
-  rm -rf Frameworks.tgz
+# Download the pinned, compatible librime XCFramework archive. The shared
+# script validates the archive before replacing any existing frameworks.
+(
+  cd "${REPOSITORY_ROOT}"
+  bash ./librimeFramework.sh
 )
 
-# 生成 SharedSupport.zip 与 rime-ice.zip
-OUTPUT="${CI_PRIMARY_REPOSITORY_PATH}/Resources/SharedSupport"
-mkdir -p $OUTPUT
-bash ${CI_PRIMARY_REPOSITORY_PATH}/InputSchemaBuild.sh
-cp ${CI_PRIMARY_REPOSITORY_PATH}/.tmp/SharedSupport/SharedSupport.zip $OUTPUT
-cp ${CI_PRIMARY_REPOSITORY_PATH}/.tmp/.rime-ice/rime-ice.zip $OUTPUT
+# Generate SharedSupport.zip and rime-ice.zip.
+OUTPUT="${REPOSITORY_ROOT}/Resources/SharedSupport"
+mkdir -p "${OUTPUT}"
+(
+  cd "${REPOSITORY_ROOT}"
+  bash ./InputSchemaBuild.sh
+)
+cp "${REPOSITORY_ROOT}/.tmp/SharedSupport/SharedSupport.zip" "${OUTPUT}"
+cp "${REPOSITORY_ROOT}/.tmp/.rime-ice/rime-ice.zip" "${OUTPUT}"
