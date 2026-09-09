@@ -417,7 +417,68 @@ static RimeLeversApi *get_levers() {
 }
 
 - (BOOL)replaceInputKeys:(NSString *)keys withStartPos:(int)pos AndCount:(int)length AndSession:(RimeSessionId)session {
-  return RimeReplaceInput(session, pos, length, [keys UTF8String]);
+  // 兼容实现: RimeReplaceInput 是已停用的 imfuxiao/LibrimeKit 私有扩展接口,
+  // 公开版 librime 并未实现该符号, 无法在链接期解析。
+  // 这里用 librime 公开 API 实现等价行为: 将编码输入替换为目标文本后,
+  // 由引擎按新编码重新生成候选。
+  @autoreleasepool {
+    const char *inputChars = RimeGetInput(session);
+    if (inputChars == NULL) {
+      return NO;
+    }
+    const char *keysChars = [keys UTF8String];
+    if (keysChars == NULL) {
+      return NO;
+    }
+    size_t inputLength = strlen(inputChars);
+    size_t keysLength = strlen(keysChars);
+    // 编码输入仅支持可键入的 ASCII 字符, 否则无法逐字重新键入
+    for (size_t i = 0; i < inputLength; ++i) {
+      if (inputChars[i] < 0x20 || inputChars[i] > 0x7E) {
+        return NO;
+      }
+    }
+    size_t startPos = pos < 0 ? 0 : (size_t)pos;
+    size_t removeCount = length < 0 ? 0 : (size_t)length;
+    if (startPos > inputLength) {
+      return NO;
+    }
+    if (startPos + removeCount > inputLength) {
+      removeCount = inputLength - startPos;
+    }
+    // 新文本仅支持可键入的 ASCII 字符
+    for (size_t i = 0; i < keysLength; ++i) {
+      if (keysChars[i] < 0x20 || keysChars[i] > 0x7E) {
+        return NO;
+      }
+    }
+    if (removeCount == keysLength &&
+        memcmp(inputChars + startPos, keysChars, keysLength) == 0) {
+      return YES;
+    }
+    // 重组后的编码: 前缀 + 新文本 + 后缀
+    size_t newLength = inputLength - removeCount + keysLength;
+    char *newInput = malloc(newLength + 1);
+    if (newInput == NULL) {
+      return NO;
+    }
+    memcpy(newInput, inputChars, startPos);
+    memcpy(newInput + startPos, keysChars, keysLength);
+    memcpy(newInput + startPos + keysLength,
+           inputChars + startPos + removeCount,
+           inputLength - startPos - removeCount);
+    newInput[newLength] = '\0';
+    // 逐字退格清空原编码
+    for (size_t i = 0; i < inputLength; ++i) {
+      RimeProcessKey(session, 0xFF08 /* XK_BackSpace */, 0);
+    }
+    // 重新键入新编码, 由引擎重新生成候选
+    for (size_t i = 0; i < newLength; ++i) {
+      RimeProcessKey(session, newInput[i], 0);
+    }
+    free(newInput);
+    return YES;
+  }
 }
 
 - (NSArray<IRimeCandidate *> *)getCandidateList:(RimeSessionId)session {

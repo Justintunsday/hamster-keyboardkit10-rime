@@ -48,7 +48,43 @@ HamsterKeyboard 链接正常, 只有 SbxlmKeyboard 失败。
    (C03EC3B72B066C1100DB741E), 位置与 HamsterKeyboard target 保持一致:
    位于 boost_atomic.xcframework 与 boost_regex.xcframework 之间。
 
-三、验证方式
+三、第二轮修复(构建通过 librime 链接后暴露的新问题)
+----------------------------------------------------
+推送 885f288 后重新构建(运行号 34369289306)仍失败, 但错误收敛为唯一
+未定义符号:
+
+  Undefined symbols for architecture arm64:
+    "_RimeReplaceInput", referenced from:
+      -[IRimeAPI replaceInputKeys:withStartPos:AndCount:AndSession:]
+        in RimeKitObjC.o
+
+根因: RimeReplaceInput 是已停用的 imfuxiao/LibrimeKit(iOS 预编译
+librime)私有的扩展 C 接口, 官方 rime/librime 从 1.5.3 至今从未实现过该
+符号(已逐一核对各版本 rime_api.h, 并在 GitHub 全站确认无任何实现)。
+本仓库 6bfc902 起改用仍在维护的 amorphobia/LibrimeKit v0.1.0 发布物
+(官方 librime 源码构建, 不含私有扩展), 导致链接期找不到
+_RimeReplaceInput。该问题会影响所有链接 RimeKit 的目标(主 App、
+HamsterKeyboard、SbxlmKeyboard), 只是 SbxlmKeyboard 先编译完成而最先报错。
+
+修复: 不再调用不存在的私有符号。在
+Packages/RimeKit/Sources/ObjC/irime_api.m 的
+replaceInputKeys:withStartPos:AndCount:AndSession: 中改用 librime 公开
+API 实现等价行为:
+  - 读取当前编码输入(RimeGetInput), 按 (startPos, count) 重组编码为
+    前缀 + 新文本 + 后缀;
+  - 用 RimeProcessKey 逐字退格(XK_BackSpace = 0xFF08)清空原编码;
+  - 再逐字键入新编码, 由引擎按新编码重新生成候选。
+并加入边界保护: 非 ASCII 编码/新文本时直接返回 NO, 不做破坏性改动。
+
+说明: 上游同源项目(如 xingbofeng/VoxFlow)对同一问题采用返回
+False 的兼容空桩, 会直接禁用"九宫格拼音修改编码"功能; 本修复采用
+公开 API 等价实现, 尽量保留原功能行为。若日后更换回带该私有扩展的
+librime 预编译包, 此段逻辑仍可正常使用。
+
+四、验证方式
 ------------
 推送后在 GitHub Actions 重新运行 "KeyboardKit macOS build" 工作流
 (触发事件: push 到 main), 确认全部步骤通过。
+运行记录:
+  #5 34369289306 (885f288)     失败 -> 暴露 _RimeReplaceInput 问题
+  #6 待运行(本次修复推送触发)
