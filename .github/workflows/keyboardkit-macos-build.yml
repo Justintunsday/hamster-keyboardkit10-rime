@@ -41,3 +41,65 @@ jobs:
           CODE_SIGNING_ALLOWED=NO
           CODE_SIGNING_REQUIRED=NO
           CODE_SIGN_IDENTITY=''
+
+      - name: Archive Hamster for IPA packaging
+        run: >-
+          xcodebuild archive
+          -project Hamster.xcodeproj
+          -scheme Hamster
+          -sdk iphoneos
+          -configuration Release
+          -destination 'generic/platform=iOS'
+          -archivePath "$RUNNER_TEMP/Hamster.xcarchive"
+          CODE_SIGNING_ALLOWED=NO
+          CODE_SIGNING_REQUIRED=NO
+          CODE_SIGN_IDENTITY=''
+
+      - name: Package unsigned IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          archive_path="$RUNNER_TEMP/Hamster.xcarchive"
+          app_path="$archive_path/Products/Applications/Hamster.app"
+          payload_path="$RUNNER_TEMP/Payload"
+          ipa_path="$RUNNER_TEMP/Hamster-unsigned.ipa"
+
+          test -d "$archive_path"
+          test -d "$app_path"
+          test -d "$app_path/PlugIns"
+          test -d "$app_path/PlugIns/HamsterKeyboard.appex"
+          test -x "$app_path/PlugIns/HamsterKeyboard.appex/HamsterKeyboard"
+          test -d "$app_path/PlugIns/SbxlmKeyboard.appex"
+          test -x "$app_path/PlugIns/SbxlmKeyboard.appex/SbxlmKeyboard"
+
+          rm -rf "$payload_path"
+          mkdir -p "$payload_path"
+          ditto "$app_path" "$payload_path/Hamster.app"
+
+          test -x "$payload_path/Hamster.app/Hamster"
+          test -d "$payload_path/Hamster.app/PlugIns/HamsterKeyboard.appex"
+          test -x "$payload_path/Hamster.app/PlugIns/HamsterKeyboard.appex/HamsterKeyboard"
+          test -d "$payload_path/Hamster.app/PlugIns/SbxlmKeyboard.appex"
+          test -x "$payload_path/Hamster.app/PlugIns/SbxlmKeyboard.appex/SbxlmKeyboard"
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$payload_path" "$ipa_path"
+          test -s "$ipa_path"
+
+          ipa_listing=$(unzip -Z1 "$ipa_path")
+          grep -Fqx "Payload/Hamster.app/Hamster" <<<"$ipa_listing"
+          grep -Eq "^Payload/Hamster.app/PlugIns/HamsterKeyboard\\.appex/" <<<"$ipa_listing"
+          grep -Fqx "Payload/Hamster.app/PlugIns/HamsterKeyboard.appex/HamsterKeyboard" <<<"$ipa_listing"
+          grep -Eq "^Payload/Hamster.app/PlugIns/SbxlmKeyboard\\.appex/" <<<"$ipa_listing"
+          grep -Fqx "Payload/Hamster.app/PlugIns/SbxlmKeyboard.appex/SbxlmKeyboard" <<<"$ipa_listing"
+
+          ipa_size=$(stat -f %z "$ipa_path")
+          echo "Unsigned IPA: $ipa_path (${ipa_size} bytes)"
+          echo "This IPA is unsigned and must be re-signed before installation."
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Hamster-iOS-unsigned-ipa
+          path: ${{ runner.temp }}/Hamster-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
