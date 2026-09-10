@@ -1,6 +1,7 @@
 #import "irime_api.h"
 #import "../C/rime_api.h"
 #import "../C/rime_levers_api.h"
+#include <stdio.h>
 
 static id<IRimeNotificationDelegate> notificationDelegate = nil;
 
@@ -330,12 +331,15 @@ static RimeLeversApi *get_levers() {
 }
 
 - (void)setup:(IRimeTraits *)traits {
+  fprintf(stderr, "[rime] RimeSetup begin\n");
   RIME_STRUCT(RimeTraits, rimeTraits);
   [traits rimeTraits:&rimeTraits];
   RimeSetup(&rimeTraits);
+  fprintf(stderr, "[rime] RimeSetup done\n");
 }
 
 - (void)initialize:(IRimeTraits *)traits {
+  fprintf(stderr, "[rime] RimeInitialize begin\n");
   if (traits == nil) {
     RimeInitialize(NULL);
   } else {
@@ -343,19 +347,27 @@ static RimeLeversApi *get_levers() {
     [traits rimeTraits:&rimeTraits];
     RimeInitialize(&rimeTraits);
   }
+  fprintf(stderr, "[rime] RimeInitialize done\n");
 }
 
 - (void)finalize {
+  fprintf(stderr, "[rime] RimeFinalize begin\n");
   RimeFinalize();
+  fprintf(stderr, "[rime] RimeFinalize done\n");
 }
 
 - (void)startMaintenance:(BOOL)fullCheck {
+  fprintf(stderr, "[rime] RimeStartMaintenance begin fullCheck=%d\n", (int)fullCheck);
   // check for configuration updates
   if (RimeStartMaintenance((Bool)fullCheck) && RimeIsMaintenancing()) {
+    fprintf(stderr, "[rime] RimeJoinMaintenanceThread begin\n");
     // update squirrel config
     RimeJoinMaintenanceThread();
+    fprintf(stderr, "[rime] RimeJoinMaintenanceThread done\n");
     RimeDeployConfigFile("squirrel.yaml", "config_version");
+    fprintf(stderr, "[rime] RimeDeployConfigFile done\n");
   }
+  fprintf(stderr, "[rime] RimeStartMaintenance done\n");
 }
 
 - (BOOL)preBuildAllSchemas {
@@ -363,6 +375,7 @@ static RimeLeversApi *get_levers() {
 }
 
 - (void)deployerInitialize:(IRimeTraits *)traits {
+  fprintf(stderr, "[rime] RimeDeployerInitialize begin\n");
   if (traits == nil) {
     RimeDeployerInitialize(NULL);
   } else {
@@ -370,10 +383,14 @@ static RimeLeversApi *get_levers() {
     [traits rimeTraits:&rimeTraits];
     RimeDeployerInitialize(&rimeTraits);
   }
+  fprintf(stderr, "[rime] RimeDeployerInitialize done\n");
 }
 
 - (BOOL)deploy {
-  return rime_get_api()->deploy();
+  fprintf(stderr, "[rime] RimeDeploy begin\n");
+  BOOL handled = rime_get_api()->deploy();
+  fprintf(stderr, "[rime] RimeDeploy done handled=%d\n", (int)handled);
+  return handled;
 }
 
 // 对应lever/下deployment_task
