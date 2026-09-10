@@ -1,9 +1,9 @@
-﻿构建修复记录 / Build Fix Log
+构建修复记录 / Build Fix Log
 =============================
 
 日期: 2026-09-09
 仓库: https://github.com/Justintunsday/hamster-keyboardkit10-rime
-失败的构建: "KeyboardKit macOS build" 工作流
+失败的构建: KeyboardKit macOS build 工作流
   - Run: https://github.com/Justintunsday/hamster-keyboardkit10-rime/actions/runs/34367816847
   - Job: https://github.com/Justintunsday/hamster-keyboardkit10-rime/actions/runs/34367816847/job/102520987957
   - 失败提交: d1b047c ("Align iOS package targets and framework links")
@@ -34,10 +34,10 @@ HamsterKeyboard 链接正常, 只有 SbxlmKeyboard 失败。
 
 补充背景: 前几次运行(34366506587 等)分别因 boost_locale.xcframework
 不存在、iOS 最低版本(15.0 vs 16.0)不匹配而失败, 已被提交 d1b047c 修复;
-本次是修复上述问题后暴露出的下一个链接问题。
+本次是修复上述问题后暴露出的下一个(也是最后一个)链接问题。
 
-二、修复内容(提交 885f288)
----------------------------
+二、修复内容(本次更改)
+-----------------------
 文件: Hamster.xcodeproj/project.pbxproj
 
 1. 新增 PBXBuildFile 定义:
@@ -48,9 +48,9 @@ HamsterKeyboard 链接正常, 只有 SbxlmKeyboard 失败。
    (C03EC3B72B066C1100DB741E), 位置与 HamsterKeyboard target 保持一致:
    位于 boost_atomic.xcframework 与 boost_regex.xcframework 之间。
 
-三、第二轮修复(提交 1e7bc3b / 8ebc2eb): RimeReplaceInput 私有符号
-------------------------------------------------------------------
-推送 885f288 后重新构建(运行 #5 34369289306)仍失败, 但错误收敛为唯一
+三、第二轮修复(构建通过 librime 链接后暴露的新问题)
+----------------------------------------------------
+推送 885f288 后重新构建(运行号 34369289306)仍失败, 但错误收敛为唯一
 未定义符号:
 
   Undefined symbols for architecture arm64:
@@ -63,7 +63,7 @@ librime)私有的扩展 C 接口, 官方 rime/librime 从 1.5.3 至今从未实�
 符号(已逐一核对各版本 rime_api.h, 并在 GitHub 全站确认无任何实现)。
 本仓库 6bfc902 起改用仍在维护的 amorphobia/LibrimeKit v0.1.0 发布物
 (官方 librime 源码构建, 不含私有扩展), 导致链接期找不到
-_RimeReplaceInput。该问题影响所有链接 RimeKit 的目标(主 App、
+_RimeReplaceInput。该问题会影响所有链接 RimeKit 的目标(主 App、
 HamsterKeyboard、SbxlmKeyboard), 只是 SbxlmKeyboard 先编译完成而最先报错。
 
 修复: 不再调用不存在的私有符号。在
@@ -84,14 +84,23 @@ False 的兼容空桩, 会直接禁用"九宫格拼音修改编码"功能; 本�
 公开 API 等价实现, 尽量保留原功能行为。若日后更换回带该私有扩展的
 librime 预编译包, 此段逻辑仍可正常使用。
 
-另注: 第一版修复(1e7bc3b)误用了不存在的全局函数 RimeGetInput/
-RimeProcessKey, 运行 #6 编译失败; 8ebc2eb 改为 rime_get_api() 函数表
-后通过。
+四、验证方式
+------------
+推送后在 GitHub Actions 重新运行 "KeyboardKit macOS build" 工作流
+(触发事件: push 到 main), 确认全部步骤通过。
+运行记录:
+  #5 34369289306 (885f288)     失败 -> 暴露 _RimeReplaceInput 问题
+  #6 34370791453 (1e7bc3b)     失败 -> RimeGetInput 不存在于公开 API,
+                                    改用 rime_get_api()->get_input
+  #7 34371364231 (8ebc2eb)     失败 -> RimeKit 已通过链接, 新错误为
+                                    KeyboardKit 二进制与 Xcode 16.4
+                                    (Swift 6.1.2/iOS 18.5 SDK) 不兼容
+  #8 待运行(本次修复推送触发)
 
-四、第三轮修复(提交 895e2a4): 构建工具链迁移到 Xcode 26
+五、第三轮修复(KeyboardKit 预编译二进制与旧工具链不兼容)
 --------------------------------------------------------
-运行 #7 (34371364231) 通过全部 Rime 相关编译与链接后, 失败点转移到
-HamsterKeyboard target 编译 Swift 文件导入 KeyboardKit 模块:
+运行 #7 通过全部 Rime 相关编译与链接后, 失败点转移到 HamsterKeyboard
+target 编译 Swift 文件导入 KeyboardKit 模块:
 
   error: failed to build module 'KeyboardKit'; this SDK is not supported
   by the compiler (the SDK is built with 'Apple Swift version 6.3.3
@@ -112,96 +121,3 @@ Xcode 16.4(Swift 6.1.2 / iOS 18.5 SDK), 编译器版本低于构建 SDK 版本,
       runs-on: macos-15-intel -> macos-26
       xcode-version: '16.4' -> '26.6'
   - .github/workflows/ci.yml: 同样更新(供手动归档构建使用)
-
-五、第四轮修复(提交 e70f668): 升级 Runestone / TreeSitterLanguages
------------------------------------------------------------------
-运行 #8 (34372403086) 失败:
-  迁移 Xcode 26.6 后, Runestone 0.3.0 编译失败:
-    protocol 'UIFindInteractionDelegate' requires
-    'findInteraction(_:sessionFor:)' ...
-  (iOS 26 SDK 将该协议方法标注 @MainActor, 旧源码的非隔离实现不再满足
-  协议要求)
-
-修复: 升级依赖组合(commit e70f668):
-  - Packages/HamsteriOS/Package.swift:
-      Runestone 0.3.0 -> 0.5.2 (0.5.2 即上游 "Fix compilation on
-      Xcode 26.4" 修复提交)
-      TreeSitterLanguages 0.1.7 -> 0.1.10 (0.1.10 声明支持
-      Runestone >= 0.4.1, 与 0.5.2 配套)
-  - Hamster.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
-    Package.resolved: 同步更新两个包的 revision/version
-
-六、第五轮修复(提交 064bc17): StandardKeyboardActionHandler 初始化器
--------------------------------------------------------------------
-运行 #9 (34373348228) 失败:
-  全部代码编译通过后, HamsterKeyboard.appex 链接失败:
-    Undefined symbols: KeyboardKit.StandardKeyboardActionHandler
-    .init(controller:) ...
-
-根因: KeyboardKit 10.9.4 预编译二进制并未导出 convenience
-init(controller:), 只存在带 10 个参数的 designated initializer
-(已解包 KeyboardKit.xcframework 的 swiftinterface 逐一核对, 并对照
-其他 KeyboardKit 10.9 实际项目验证调用方式)。
-
-修复(commit 064bc17): HamsterKeyboard/KeyboardKit10ActionHandler.swift
-改用 designated 初始化器, 参数取自 controller.state / controller.services:
-  keyboardContext、keyboardBehavior、autocompleteContext、
-  autocompleteService、emojiContext、feedbackContext、feedbackService、
-  keyboardAppContext、spacebarDragGestureHandler。
-
-七、第六轮修复(提交 afe0d71): App Shortcut 短语占位符
------------------------------------------------------
-运行 #10 (34374207899) 失败:
-  两个键盘扩展均链接成功后, 主 App target 的 AppIntents 元数据导出失败:
-    Hamster/Shortcuts/IntentProvider.swift:12: error: Invalid Utterance.
-    Every App Shortcut utterance should have one '${applicationName}'
-
-根因: iOS 26 SDK 的 appintentsmetadataprocessor 强制要求每条短语必须
-且只能包含一个 ${applicationName} 占位符(旧 SDK 仅为建议)。
-
-修复(commit afe0d71): 为四条短语补充 ${applicationName}:
-  "RIME Sync using ${applicationName}"、"使用${applicationName}同步RIME"
-  "RIME Deploy using ${applicationName}"、"使用${applicationName}重新部署RIME"
-
-九、补充: CI 产出 ipa 包(提交 86b15e8)
------------------------------------
-原工作流只做 xcodebuild build 编译验证, 不产出任何安装包。经确认,
-改为在每次 push 时顺带产出可下载的未签名 .ipa:
-
-  - .github/workflows/keyboardkit-macos-build.yml 新增步骤:
-    1. Archive Hamster app: xcodebuild archive(CODE_SIGNING_ALLOWED=NO,
-       CODE_SIGNING_REQUIRED=NO, 归档到 Hamster.xcarchive)
-    2. Package unsigned ipa: 对 .app 执行 codesign --force --deep
-       --sign -(ad-hoc, 便于后续用 AltStore/Sideloadly 等工具再签名),
-       组装 Payload/Hamster.app 并压缩为 Hamster-unsigned.ipa
-    3. Upload ipa artifact: actions/upload-artifact@v4 上传
-       Hamster-unsigned-ipa
-
-说明: CI 无开发者证书/描述文件, 因此只能产出未签名(ad-hoc)ipa;
-签名与安装需在本地使用自己的证书完成。
-
-十、最终结果
-------------
-运行 #11 (34374868394, afe0d71): 成功 (success)
-  https://github.com/Justintunsday/hamster-keyboardkit10-rime/actions/runs/34374868394
-
-  全部步骤通过: 下载 Rime frameworks -> 生成输入方案 -> 解析 SwiftPM
-  包 -> Release-iphoneos 构建 Hamster / HamsterKeyboard / SbxlmKeyboard。
-
-运行记录汇总:
-  #5  34369289306 (885f288)  失败 -> 暴露 _RimeReplaceInput 链接问题
-  #6  34370791453 (1e7bc3b)  失败 -> RimeGetInput/RimeProcessKey 不存在,
-                                  改用 rime_get_api() 函数表
-  #7  34371364231 (8ebc2eb)  失败 -> KeyboardKit 二进制与 Xcode 16.4
-                                  (Swift 6.1.2/iOS 18.5 SDK) 不兼容
-  #8  34372403086 (895e2a4)  失败 -> Runestone 0.3.0 与 iOS 26 SDK
-                                  不兼容(见第五节)
-  #9  34373348228 (e70f668)  失败 -> HamsterKeyboard 链接缺少
-                                  StandardKeyboardActionHandler
-                                  convenience init(见第六节)
-  #10 34374207899 (064bc17)  失败 -> App Shortcut 短语缺少
-                                  ${applicationName}(见第七节)
-  #11 34374868394 (afe0d71)  成功 -> 全部步骤通过
-
-本文件记录了自 d1b047c 之后为修复该工作流所做全部更改(含 ipa 打包产物的
-工作流变更)。

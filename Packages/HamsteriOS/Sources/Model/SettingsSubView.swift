@@ -39,9 +39,6 @@ public enum SettingsSubView: String {
   /// 关于页面
   case about
 
-  /// 诊断日志页面
-  case diagnostics
-
   /// 主页面
   case main
 

@@ -197,7 +197,6 @@ public extension RimeContext {
   /// RIME 启动
   /// 注意：仅用于键盘扩展调用
   func start(hasFullAccess: Bool) async {
-    HamsterDiagnostics.record(process: .keyboard, category: "rime", message: "Rime engine start entered")
     Rime.shared.setNotificationDelegate(self)
 
     // 启动
@@ -206,24 +205,16 @@ public extension RimeContext {
       userDataDir: hasFullAccess ? FileManager.appGroupUserDataDirectoryURL.path : FileManager.sandboxUserDataDirectory.path
     ))
 
-    HamsterDiagnostics.record(process: .keyboard, category: "rime", message: "Rime engine start call completed")
-
-    if !Rime.shared.isRunning() {
-      HamsterDiagnostics.record(process: .keyboard, severity: .error, category: "rime", message: "Rime engine did not report running after start")
-    }
-
     // 设置初始输入方案
     setupRimeInputSchema()
 
     // 中英状态同步
     await setAsciiMode(Rime.shared.isAsciiMode())
-    HamsterDiagnostics.record(process: .keyboard, category: "rime", message: "Rime engine is ready")
   }
 
   /// RIME 关闭
   /// 注意：仅用于键盘扩展调用
   func shutdown() {
-    HamsterDiagnostics.record(process: .keyboard, category: "rime", message: "Rime engine shutdown requested")
     Rime.shared.shutdown()
   }
 

@@ -111,12 +111,6 @@ open class HamsterAppDependencyContainer {
   }
 
   private init() {
-
-    HamsterDiagnostics.record(
-      process: .host,
-      category: "startup",
-      message: "Application dependency container initialization started"
-    )
     // 创建 long-lived 属性
     self.rimeContext = RimeContext()
     self.mainViewModel = MainViewModel()
@@ -139,9 +133,7 @@ open class HamsterAppDependencyContainer {
       } catch {
         self.configuration = HamsterConfiguration()
         Logger.statistics.error("init SharedSupport error: \(error.localizedDescription)")
-        HamsterDiagnostics.record(process: .host, severity: .error, category: "startup", message: "Initial SharedSupport setup failed")
       }
-      HamsterDiagnostics.record(process: .host, category: "startup", message: "First-run configuration initialization finished")
       return
     }
 
@@ -158,7 +150,6 @@ open class HamsterAppDependencyContainer {
       }
     } catch {
       Logger.statistics.error("load configuration from UserDefault error: \(error.localizedDescription)")
-      HamsterDiagnostics.record(process: .host, severity: .error, category: "startup", message: "Configuration load failed; using fallback")
       // 如果从 UserDefaults 加载失败，则尝试从配置文件中加载一次
       if let hamsterConfiguration = try? HamsterConfigurationRepositories.shared.loadFromYAML(FileManager.hamsterConfigFileOnSandboxSharedSupport) {
         self.configuration = hamsterConfiguration
@@ -166,7 +157,6 @@ open class HamsterAppDependencyContainer {
         self.configuration = HamsterConfiguration()
       }
     }
-    HamsterDiagnostics.record(process: .host, category: "startup", message: "Application dependency container initialization finished")
   }
 
   /// 重置应用配置
@@ -295,10 +285,6 @@ extension HamsterAppDependencyContainer: SubViewControllerFactory {
   public func makeSettingsViewController() -> SettingsViewController {
     let settingViewController = SettingsViewController(settingsViewModel: settingsViewModel, rimeViewModel: rimeViewModel, backupViewModel: backupViewModel)
     return settingViewController
-  }
-
-  func makeDiagnosticsViewController() -> DiagnosticsViewController {
-    DiagnosticsViewController()
   }
 
   func makeInputSchemaViewController() -> InputSchemaViewController {
