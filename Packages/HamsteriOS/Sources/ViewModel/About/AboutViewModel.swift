@@ -65,7 +65,13 @@ public class AboutViewModel: ObservableObject {
       items: [
         .init(text: "重置界面设置", textTintColor: .systemRed, type: .button, buttonAction: { [unowned self] in
           self.restUISettingsSubject.send {
-            HamsterAppDependencyContainer.shared.resetAppConfiguration()
+            do {
+              try HamsterAppDependencyContainer.shared.resetAppConfiguration()
+            } catch {
+              Task {
+                await ProgressHUD.failed("重置界面设置失败：\(error.localizedDescription)", interaction: false, delay: 3)
+              }
+            }
           }
         })
       ]),

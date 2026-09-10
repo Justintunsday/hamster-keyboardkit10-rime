@@ -247,14 +247,41 @@ public extension FileManager {
 
 // MARK: 应用内文件路径及操作
 
+/// App Group 容器不可用时返回的错误。
+///
+/// 这通常表示 App 或键盘扩展的签名没有启用同一个 App Group，或者当前安装包的
+/// Entitlements 与代码中的 App Group 标识不一致。调用方应将错误显示给用户，不能
+/// 使用应用沙盒目录代替共享容器。
+public enum HamsterAppGroupError: LocalizedError, Equatable {
+  case unavailable(identifier: String)
+
+  public var errorDescription: String? {
+    switch self {
+    case let .unavailable(identifier):
+      return "App Group 共享容器不可用（\(identifier)）。请在 Xcode 的 Signing & Capabilities 中为 App 和键盘扩展启用同一个 App Group，并使用同一开发团队签名后重新安装应用。"
+    }
+  }
+}
+
 public extension FileManager {
+  /// 获取 App Group 容器。缺少签名权限时抛出可展示给用户的错误，避免强制解包触发崩溃。
+  static func appGroupContainerURL() throws -> URL {
+    guard let url = FileManager.default.containerURL(
+      forSecurityApplicationGroupIdentifier: HamsterConstants.appGroupName
+    ) else {
+      throw HamsterAppGroupError.unavailable(identifier: HamsterConstants.appGroupName)
+    }
+    return url
+  }
+
   // AppGroup共享目录
   // 注意：AppGroup已变为Keyboard复制方案使用的中转站
   // App内部使用位置在 Document 和 iCloud 下
   static var shareURL: URL {
-    FileManager.default.containerURL(
-      forSecurityApplicationGroupIdentifier: HamsterConstants.appGroupName)!
-      .appendingPathComponent("InputSchema")
+    get throws {
+      try appGroupContainerURL()
+        .appendingPathComponent("InputSchema")
+    }
   }
 
   static var sandboxDirectory: URL {
@@ -264,26 +291,34 @@ public extension FileManager {
 
   // AppGroup共享下: SharedSupport目录
   static var appGroupSharedSupportDirectoryURL: URL {
-    shareURL.appendingPathComponent(
-      HamsterConstants.rimeSharedSupportPathName, isDirectory: true
-    )
+    get throws {
+      try shareURL.appendingPathComponent(
+        HamsterConstants.rimeSharedSupportPathName, isDirectory: true
+      )
+    }
   }
 
   // AppGroup共享下: userData目录
   static var appGroupUserDataDirectoryURL: URL {
-    shareURL.appendingPathComponent(
-      HamsterConstants.rimeUserPathName, isDirectory: true
-    )
+    get throws {
+      try shareURL.appendingPathComponent(
+        HamsterConstants.rimeUserPathName, isDirectory: true
+      )
+    }
   }
 
   // 沙盒 Document 目录下备份目录
   static var appGroupBackupDirectory: URL {
-    shareURL.appendingPathComponent("backups", isDirectory: true)
+    get throws {
+      try shareURL.appendingPathComponent("backups", isDirectory: true)
+    }
   }
 
   // AppGroup共享下：userData目录下: default.custom.yaml文件路径
   static var appGroupUserDataDefaultCustomYaml: URL {
-    appGroupUserDataDirectoryURL.appendingPathComponent("default.custom.yaml")
+    get throws {
+      try appGroupUserDataDirectoryURL.appendingPathComponent("default.custom.yaml")
+    }
   }
 
   // Sandbox下：userData目录下: default.custom.yaml文件路径
@@ -293,7 +328,9 @@ public extension FileManager {
 
   // AppGroup共享下：userData目录下: installation.yaml文件路径
   static var appGroupInstallationYaml: URL {
-    appGroupUserDataDirectoryURL.appendingPathComponent("installation.yaml")
+    get throws {
+      try appGroupUserDataDirectoryURL.appendingPathComponent("installation.yaml")
+    }
   }
 
   // Sandbox下：userData目录下: installation.yaml文件路径
@@ -335,7 +372,9 @@ public extension FileManager {
 
   /// AppGroup/Rime/build/hamster.yaml 文件
   static var hamsterConfigFileOnAppGroupBuild: URL {
-    appGroupUserDataDirectoryURL.appendingPathComponent("/build/hamster.yaml")
+    get throws {
+      try appGroupUserDataDirectoryURL.appendingPathComponent("/build/hamster.yaml")
+    }
   }
 
   // 沙盒 Document 目录下 ShareSupport 目录

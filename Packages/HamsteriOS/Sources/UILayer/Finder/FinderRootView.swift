@@ -6,6 +6,7 @@
 //
 
 import Combine
+import HamsterKit
 import HamsterUIKit
 import UIKit
 
@@ -48,8 +49,9 @@ class FinderRootView: NibLessView {
     return FileBrowserView(finderViewModel: finderViewModel, fileBrowserViewModel: fileBrowserViewModel)
   }()
 
-  lazy var appGroupDocumentFileBrowseView: FileBrowserView = {
-    let fileBrowserViewModel = fileBrowserViewModelFactory.makeFileBrowserViewModel(rootURL: FileManager.shareURL)
+  lazy var appGroupDocumentFileBrowseView: FileBrowserView? = {
+    guard let shareURL = try? FileManager.shareURL else { return nil }
+    let fileBrowserViewModel = fileBrowserViewModelFactory.makeFileBrowserViewModel(rootURL: shareURL)
     return FileBrowserView(finderViewModel: finderViewModel, fileBrowserViewModel: fileBrowserViewModel)
   }()
 
@@ -130,7 +132,21 @@ extension FinderRootView {
   }
 
   func switchAppGroupFileBrowser() {
-    changeContentSubView(view: appGroupDocumentFileBrowseView)
+    guard let view = appGroupDocumentFileBrowseView else {
+      let stackView = UIStackView(frame: .zero)
+      stackView.axis = .vertical
+      stackView.alignment = .center
+      stackView.distribution = .fill
+
+      let warningLabel = UILabel(frame: .zero)
+      warningLabel.text = "App Group 共享容器不可用，请检查 App 和键盘扩展的签名权限后重新安装。"
+      warningLabel.font = UIFont.preferredFont(forTextStyle: .body)
+      warningLabel.numberOfLines = 0
+      stackView.addArrangedSubview(warningLabel)
+      changeContentSubView(view: stackView)
+      return
+    }
+    changeContentSubView(view: view)
   }
 
   func switchAppleCloudBrowser() {

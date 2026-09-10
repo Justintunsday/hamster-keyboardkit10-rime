@@ -12,7 +12,14 @@ import Yams
 /// UserDefault 扩展
 public extension UserDefaults {
   /// AppGroup 共享 UserDefaults
-  static let hamster = UserDefaults(suiteName: HamsterConstants.appGroupName)!
+  static var hamster: UserDefaults {
+    get throws {
+      guard let defaults = UserDefaults(suiteName: HamsterConstants.appGroupName) else {
+        throw HamsterAppGroupError.unavailable(identifier: HamsterConstants.appGroupName)
+      }
+      return defaults
+    }
+  }
 
   // MARK: - 仓输入法 1.0 版本相关参数
 
@@ -230,7 +237,7 @@ public extension UserDefaults {
     }
     set {
       if let data = try? JSONEncoder().encode(newValue) {
-        UserDefaults.hamster.set(data, forKey: Self.schemasForKey)
+        set(data, forKey: Self.schemasForKey)
         Logger.statistics.debug("save schemas: \(newValue)")
       }
     }
@@ -248,7 +255,7 @@ public extension UserDefaults {
     }
     set {
       if let data = try? JSONEncoder().encode(newValue) {
-        UserDefaults.hamster.set(data, forKey: Self.selectSchemasForKey)
+        set(data, forKey: Self.selectSchemasForKey)
         Logger.statistics.debug("save selectSchemas: \(newValue)")
       }
     }
@@ -266,7 +273,7 @@ public extension UserDefaults {
     }
     set {
       if let data = try? JSONEncoder().encode(newValue) {
-        UserDefaults.hamster.set(data, forKey: Self.currentSchemaForKey)
+        set(data, forKey: Self.currentSchemaForKey)
         Logger.statistics.debug("save currentSchema: \(data)")
       }
     }
@@ -284,7 +291,7 @@ public extension UserDefaults {
     }
     set {
       if let data = try? JSONEncoder().encode(newValue) {
-        UserDefaults.hamster.set(data, forKey: Self.latestSchemaForKey)
+        set(data, forKey: Self.latestSchemaForKey)
         Logger.statistics.debug("save latestSchema: \(data)")
       }
     }

@@ -282,10 +282,11 @@ public class KeyboardContext: ObservableObject {
       // yaml 格式大约 122 ms
       // self.hamsterConfiguration = try HamsterConfigurationRepositories.shared.loadFromYAML(FileManager.hamsterConfigFileOnAppGroupBuild)
       // json 格式 40.96 ms/ 35 ms/ 41.76 ms
-//      let data = try Data(contentsOf: FileManager.appGroupUserDataDirectoryURL.appendingPathComponent("/build/hamster.json"))
+//      let data = try Data(contentsOf: try FileManager.appGroupUserDataDirectoryURL.appendingPathComponent("/build/hamster.json"))
 //      self.hamsterConfiguration = try ZippyJSONDecoder().decode(HamsterConfiguration.self, from: data)
       // plist 格式大约 28.48 ms/ 27.59 ms
-      let data = try Data(contentsOf: FileManager.appGroupUserDataDirectoryURL.appendingPathComponent("/build/hamster.plist"))
+      let appGroupUserDataDirectory = try FileManager.appGroupUserDataDirectoryURL
+      let data = try Data(contentsOf: appGroupUserDataDirectory.appendingPathComponent("/build/hamster.plist"))
       self.hamsterConfiguration = try PropertyListDecoder().decode(HamsterConfiguration.self, from: data)
     } catch {
       Logger.statistics.error("load build/hamster.yaml error: \(error.localizedDescription)")

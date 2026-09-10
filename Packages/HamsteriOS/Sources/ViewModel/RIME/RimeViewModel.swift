@@ -287,7 +287,7 @@ public extension RimeViewModel {
       try rimeContext.restRime()
 
       // 重置应用配置
-      HamsterAppDependencyContainer.shared.resetHamsterConfiguration()
+      try HamsterAppDependencyContainer.shared.resetHamsterConfiguration()
 
       // 重新读取 Hamster.yaml 生成 configuration
       let hamsterConfiguration = try HamsterConfigurationRepositories.shared.loadFromYAML(FileManager.hamsterConfigFileOnSandboxSharedSupport)

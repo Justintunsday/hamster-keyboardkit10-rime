@@ -8,14 +8,21 @@
 import CoreData
 
 struct PersistentController {
-  static let shared = PersistentController()
+  private static let sharedResult: Result<PersistentController, Error> = Result {
+    try PersistentController()
+  }
+
+  static var shared: PersistentController {
+    get throws {
+      try sharedResult.get()
+    }
+  }
 
   let container: NSPersistentContainer
-  init() {
+  init() throws {
     let name = "HamsterApp"
 
-    let storeURL = FileManager.default.containerURL(
-      forSecurityApplicationGroupIdentifier: HamsterConstants.appGroupName)!
+    let storeURL = try FileManager.appGroupContainerURL()
       .appendingPathComponent("\(name).sqlite")
 
     let storeDescription = NSPersistentStoreDescription(url: storeURL)

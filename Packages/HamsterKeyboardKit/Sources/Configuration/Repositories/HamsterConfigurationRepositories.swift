@@ -82,11 +82,11 @@ public class HamsterConfigurationRepositories {
 
   private func saveToUserDefaults(_ config: HamsterConfiguration, key: String) throws {
     let data = try JSONEncoder().encode(config)
-    UserDefaults.hamster.setValue(data, forKey: key)
+    try UserDefaults.hamster.setValue(data, forKey: key)
   }
 
   private func loadConfigFromUserDefaults(key: String) throws -> HamsterConfiguration {
-    guard let data = UserDefaults.hamster.data(forKey: key) else { throw "load HamsterConfiguration from UserDefault is empty." }
+    guard let data = try UserDefaults.hamster.data(forKey: key) else { throw "load HamsterConfiguration from UserDefault is empty." }
     return try JSONDecoder().decode(HamsterConfiguration.self, from: data)
     // return try ZippyJSONDecoder().decode(HamsterConfiguration.self, from: data)
   }
@@ -109,8 +109,8 @@ public class HamsterConfigurationRepositories {
   }
 
   /// 从 UserDefaults 中删除应用配置
-  public func removeFromUserDefaults() {
-    UserDefaults.hamster.removeObject(forKey: Self.hamsterConfigurationKey)
+  public func removeFromUserDefaults() throws {
+    try UserDefaults.hamster.removeObject(forKey: Self.hamsterConfigurationKey)
   }
 
   /// 按优先级读取配置文件
@@ -145,15 +145,16 @@ public class HamsterConfigurationRepositories {
   }
 
   /// 清空 UI 交互生成的配置
-  public func resetAppConfiguration() {
-    UserDefaults.hamster.removeObject(forKey: Self.hamsterAppConfigurationKey)
+  public func resetAppConfiguration() throws {
+    try UserDefaults.hamster.removeObject(forKey: Self.hamsterAppConfigurationKey)
   }
 
   /// 清空应用配置（包含默认的应用配置）
-  public func resetConfiguration() {
-    UserDefaults.hamster.removeObject(forKey: Self.hamsterAppConfigurationKey)
-    UserDefaults.hamster.removeObject(forKey: Self.hamsterConfigurationKey)
-    UserDefaults.hamster.removeObject(forKey: Self.defaultHamsterConfigurationKey)
+  public func resetConfiguration() throws {
+    let defaults = try UserDefaults.hamster
+    defaults.removeObject(forKey: Self.hamsterAppConfigurationKey)
+    defaults.removeObject(forKey: Self.hamsterConfigurationKey)
+    defaults.removeObject(forKey: Self.defaultHamsterConfigurationKey)
   }
 }
 

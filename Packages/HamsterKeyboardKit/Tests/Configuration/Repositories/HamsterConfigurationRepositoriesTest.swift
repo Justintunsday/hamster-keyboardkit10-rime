@@ -64,7 +64,7 @@ final class HamsterConfigurationRepositoriesTest: XCTestCase {
     }
 
     let configRepositories = HamsterConfigurationRepositories.shared
-    configRepositories.removeFromUserDefaults()
+    try configRepositories.removeFromUserDefaults()
 
     let tempConfig = try configRepositories.loadFromYAML(tempYamlPath)
     try configRepositories.saveToUserDefaults(tempConfig)
