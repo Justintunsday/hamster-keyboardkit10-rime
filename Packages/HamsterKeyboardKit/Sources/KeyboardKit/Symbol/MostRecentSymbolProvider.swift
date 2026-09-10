@@ -7,6 +7,7 @@
 
 import Foundation
 import HamsterKit
+import OSLog
 
 public class MostRecentSymbolProvider: FrequentSymbolProvider {
   public init(
