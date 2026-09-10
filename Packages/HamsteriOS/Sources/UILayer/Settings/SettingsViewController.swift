@@ -41,10 +41,13 @@ public extension SettingsViewController {
     super.viewDidAppear(animated)
     Task {
       do {
+        AppLog.shared.info("SettingsViewController loadAppData task begin")
         try await self.settingsViewModel.loadAppData()
+        AppLog.shared.info("SettingsViewController loadAppData task done")
       } catch {
         ProgressHUD.failed("导入数据异常", interaction: false, delay: 2)
         Logger.statistics.error("load app data error: \(error)")
+        AppLog.shared.error("load app data error: \(error)")
       }
     }
   }

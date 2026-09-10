@@ -221,6 +221,7 @@ public extension RimeContext {
   /// RIME 部署
   /// 注意：仅可用于主 App 调用
   func deployment(configuration: inout HamsterConfiguration) throws {
+    AppLog.shared.info("Rime deployment begin (isRunning=\(isRunning))")
     // 如果开启 iCloud，则先将 iCloud 下文件增量复制到 Sandbox
     if let enableAppleCloud = configuration.general?.enableAppleCloud, enableAppleCloud == true {
       let regex = configuration.general?.regexOnCopyFile ?? []
@@ -254,8 +255,10 @@ public extension RimeContext {
         userDataDir: FileManager.sandboxUserDataDirectory.path
       ), maintenance: true, fullCheck: true)
     }
+    AppLog.shared.info("Rime maintenance start returned")
     // 此 API 根据用户配置的 scheme_list 参数获取列表，当方案不提供 schema_list 参数时，获取为空
     var schemas = Rime.shared.getSchemas().sorted()
+    AppLog.shared.info("Rime getSchemas count=\(schemas.count)")
     if schemas.isEmpty {
       // 检测 default.custom.yaml 文件是否存在，后面解析 schema_list 需要存在此文件
       let defaultCustomFilePath = FileManager.sandboxUserDataDefaultCustomYaml.path
@@ -274,7 +277,8 @@ public extension RimeContext {
         if !result {
           Logger.statistics.warning("rime set select rime schemas false")
         } else {
-          // 写完 schema_list 参数后需要重新编译方案词库文件
+          // 写完 schema_list 参数后需要重新编译方案词库文�?
+          AppLog.shared.info("Rime recompile schemas after writing default.custom.yaml")
           Rime.shared.shutdown()
           Rime.shared.start(Rime.createTraits(
             sharedSupportDir: FileManager.sandboxSharedSupportDirectory.path,
@@ -294,6 +298,7 @@ public extension RimeContext {
     }
     Logger.statistics.info("rime switcher hotkeys: \(hotKeys)")
 
+    AppLog.shared.info("Rime deployment shutdown, syncing files to app group")
     Rime.shared.shutdown()
 
     // 当用户选择输入方案如果不为空时，则取与输入方案列表的交集
@@ -338,6 +343,7 @@ public extension RimeContext {
     // 将 Sandbox 目录下方案复制到AppGroup下
     try FileManager.syncSandboxSharedSupportDirectoryToAppGroup(override: true)
     try FileManager.syncSandboxUserDataDirectoryToAppGroup(override: true)
+    AppLog.shared.info("Rime deployment done")
   }
 
   /// RIME 同步
