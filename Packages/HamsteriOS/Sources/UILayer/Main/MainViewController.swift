@@ -20,6 +20,7 @@ protocol SubViewControllerFactory {
   func makeAppleCloudViewController() -> AppleCloudViewController
   func makeBackupViewController() -> BackupViewController
   func makeAboutViewController() -> AboutViewController
+  func makeDiagnosticsViewController() -> DiagnosticsViewController
   func makeRimeViewController() -> RimeViewController
 }
 
@@ -57,6 +58,9 @@ open class MainViewController: UISplitViewController {
 
   private lazy var aboutViewController: AboutViewController
     = subViewControllerFactory.makeAboutViewController()
+
+  private lazy var diagnosticsViewController: DiagnosticsViewController
+    = subViewControllerFactory.makeDiagnosticsViewController()
 
   private lazy var primaryNavigationViewController: UINavigationController = {
     let vc = UINavigationController(rootViewController: settingsViewController)
@@ -159,6 +163,8 @@ extension MainViewController {
       presentAppleCloudViewController()
     case .about:
       presentAboutViewController()
+    case .diagnostics:
+      presentDiagnosticsViewController()
     case .main:
       presentMainViewController()
     default:
@@ -208,6 +214,10 @@ extension MainViewController {
 
   func presentAboutViewController() {
     presentViewController(aboutViewController)
+  }
+
+  func presentDiagnosticsViewController() {
+    presentViewController(diagnosticsViewController)
   }
 
   private func presentViewController(_ vc: UIViewController) {

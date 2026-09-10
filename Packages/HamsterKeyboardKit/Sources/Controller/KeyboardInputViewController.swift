@@ -38,6 +38,8 @@ open class KeyboardInputViewController: UIInputViewController, KeyboardControlle
 
   override open func viewDidLoad() {
     super.viewDidLoad()
+    HamsterDiagnostics.beginSession(process: .keyboard)
+    HamsterDiagnostics.record(process: .keyboard, category: "lifecycle", message: "Legacy keyboard extension view loaded")
     // setupInitialWidth()
     // setupLocaleObservation()
     // setupNextKeyboardBehavior()
@@ -99,6 +101,7 @@ open class KeyboardInputViewController: UIInputViewController, KeyboardControlle
    */
 
   open func viewWillSetupKeyboard() {
+    HamsterDiagnostics.record(process: .keyboard, category: "keyboardkit", message: "Legacy keyboard view setup started")
     let keyboardRootView = KeyboardRootView(
       keyboardLayoutProvider: keyboardLayoutProvider,
       appearance: keyboardAppearance,
@@ -117,10 +120,12 @@ open class KeyboardInputViewController: UIInputViewController, KeyboardControlle
       keyboardRootView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
       keyboardRootView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
     ])
+    HamsterDiagnostics.record(process: .keyboard, category: "keyboardkit", message: "Legacy keyboard view setup completed")
   }
 
   deinit {
     view.subviews.forEach { $0.removeFromSuperview() }
+    HamsterDiagnostics.endSession(process: .keyboard)
   }
 
   /**
@@ -828,6 +833,7 @@ private extension KeyboardInputViewController {
    RIME 引擎设置
    */
   func setupRIME() {
+    HamsterDiagnostics.record(process: .keyboard, category: "rime", message: "Legacy Rime startup requested")
     // 异步 RIME 引擎启动
     Task.detached { [unowned self] in
 //      if await rimeContext.isRunning {
@@ -862,6 +868,7 @@ private extension KeyboardInputViewController {
       }
 
       await rimeContext.start(hasFullAccess: true)
+      HamsterDiagnostics.record(process: .keyboard, category: "rime", message: "Legacy Rime startup completed")
 
       let simplifiedModeKey = await keyboardContext.hamsterConfiguration?.rime?.keyValueOfSwitchSimplifiedAndTraditional ?? ""
       await rimeContext.syncTraditionalSimplifiedChineseMode(simplifiedModeKey: simplifiedModeKey)
@@ -869,6 +876,7 @@ private extension KeyboardInputViewController {
   }
 
   func shutdownRIME() {
+    HamsterDiagnostics.record(process: .keyboard, category: "rime", message: "Legacy Rime shutdown requested")
     /// 停止引擎，触发自造词等数据落盘
     rimeContext.shutdown()
 

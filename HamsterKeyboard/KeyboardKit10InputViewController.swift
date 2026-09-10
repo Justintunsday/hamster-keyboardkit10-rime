@@ -7,6 +7,7 @@
 
 import Combine
 import HamsterKeyboardKit
+import HamsterKit
 import KeyboardKit
 import SwiftUI
 import UIKit
@@ -19,26 +20,33 @@ open class KeyboardKit10InputViewController: KeyboardKit.KeyboardInputViewContro
 
   override open func viewDidLoad() {
     super.viewDidLoad()
+    HamsterDiagnostics.beginSession(process: .keyboard)
+    HamsterDiagnostics.record(process: .keyboard, category: "lifecycle", message: "Keyboard extension view loaded")
     observeRimeOutput()
   }
 
   override open func viewWillSetupKeyboardKit() {
+    HamsterDiagnostics.record(process: .keyboard, category: "keyboardkit", message: "KeyboardKit setup started")
     setupKeyboardKit(for: .hamster) { result in
       switch result {
       case .success:
+        HamsterDiagnostics.record(process: .keyboard, category: "keyboardkit", message: "KeyboardKit setup succeeded")
         self.services.actionHandler = KeyboardKit10ActionHandler(
           controller: self,
           rimeContext: self.hamsterRimeContext
         )
       case .failure(let error):
         NSLog("KeyboardKit setup failed: %@", error.localizedDescription)
+        HamsterDiagnostics.record(process: .keyboard, severity: .error, category: "keyboardkit", message: "KeyboardKit setup failed")
       }
     }
   }
 
   override open func viewWillSetupKeyboardView() {
+    HamsterDiagnostics.record(process: .keyboard, category: "keyboardkit", message: "KeyboardKit view setup started")
     setupKeyboardView { [weak self] controller in
       guard let self else { return AnyView(EmptyView()) }
+      HamsterDiagnostics.record(process: .keyboard, category: "keyboardkit", message: "KeyboardKit view builder invoked")
       return AnyView(
         HamsterKeyboardKit10View(
           services: controller.services,
@@ -52,6 +60,7 @@ open class KeyboardKit10InputViewController: KeyboardKit.KeyboardInputViewContro
   deinit {
     rimeCancellables.removeAll()
     hamsterRimeContext.shutdown()
+    HamsterDiagnostics.endSession(process: .keyboard)
   }
 }
 
@@ -79,7 +88,9 @@ private extension KeyboardKit10InputViewController {
       .store(in: &rimeCancellables)
 
     Task {
+      HamsterDiagnostics.record(process: .keyboard, category: "rime", message: "Rime startup requested")
       await hamsterRimeContext.start(hasFullAccess: state.keyboardContext.hasFullAccess)
+      HamsterDiagnostics.record(process: .keyboard, category: "rime", message: "Rime startup completed")
     }
   }
 }

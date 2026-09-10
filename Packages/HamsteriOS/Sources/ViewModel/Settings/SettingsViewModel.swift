@@ -195,6 +195,16 @@ public class SettingsViewModel: ObservableObject {
           }
         ),
       ]),
+      .init(title: "诊断", items: [
+        .init(
+          icon: UIImage(systemName: "waveform.path.ecg")!,
+          text: "诊断日志",
+          accessoryType: .disclosureIndicator,
+          navigationAction: { [unowned self] in
+            self.mainViewModel.subViewSubject.send(.diagnostics)
+          }
+        ),
+      ]),
     ]
     return sections
   }()
