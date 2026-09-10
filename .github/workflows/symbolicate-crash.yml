@@ -3,7 +3,7 @@ name: Symbolicate Hamster crash
 on:
   push:
     branches:
-      - codex/symbolicate-993
+      - codex/symbolicate-crash-993
   workflow_dispatch:
 
 jobs:
