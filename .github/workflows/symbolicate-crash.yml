@@ -1,0 +1,105 @@
+name: Symbolicate Hamster crash
+
+on:
+  push:
+    branches:
+      - codex/symbolicate-993
+  workflow_dispatch:
+
+jobs:
+  symbolicate:
+    runs-on: macos-26
+    steps:
+      - name: Checkout 993 crash build
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26.6'
+
+      - name: Download Rime frameworks
+        run: make framework
+
+      - name: Build input schemas
+        run: make schema
+
+      - name: Archive Hamster app
+        run: |
+          xcodebuild archive \
+            -archivePath "Hamster" \
+            -scheme "Hamster" \
+            -sdk "iphoneos" \
+            -arch arm64 \
+            -configuration Release \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Verify UUIDs and symbolicate crash addresses
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          expected_uuid='f2e9e242-0134-3bca-9ccb-200a547a12a7'
+          app_path="$(find Hamster.xcarchive/Products/Applications -type d -name '*.app' -print | head -n 1)"
+          dsym_path="$(find Hamster.xcarchive/dSYMs -type d -name 'Hamster.app.dSYM' -print | head -n 1)"
+          test -n "$app_path"
+          test -n "$dsym_path"
+
+          binary="$app_path/Hamster"
+          dwarf="$dsym_path/Contents/Resources/DWARF/Hamster"
+          test -f "$binary"
+          test -f "$dwarf"
+
+          binary_uuid="$(dwarfdump --uuid "$binary")"
+          dsym_uuid="$(dwarfdump --uuid "$dsym_path")"
+          {
+            echo '## Hamster binary UUID'
+            printf '%s\n' "$binary_uuid"
+            echo '## Hamster.app.dSYM UUID'
+            printf '%s\n' "$dsym_uuid"
+            echo '## UUID verification against crash report'
+            if printf '%s\n' "$binary_uuid" | grep -Fqi "$expected_uuid"; then
+              echo 'Binary UUID: VERIFIED'
+            else
+              echo 'Binary UUID: UNVERIFIED'
+            fi
+            if printf '%s\n' "$dsym_uuid" | grep -Fqi "$expected_uuid"; then
+              echo 'dSYM UUID: VERIFIED'
+            else
+              echo 'dSYM UUID: UNVERIFIED'
+            fi
+          } | tee symbolication.txt
+
+          echo 'UUID mismatches are reported above; continuing with atos symbolication.'
+          echo '## atos symbolication (load address 0x1006dc000)' | tee -a symbolication.txt
+          xcrun atos \
+            -arch arm64 \
+            -o "$dwarf" \
+            -l 0x1006dc000 \
+            0x1008311b8 \
+            0x10083262c \
+            0x100832418 \
+            0x10099afcc \
+            0x10077fc74 \
+            0x10073ce49 \
+            0x1006e08e1 \
+            0x1006ea0a5 \
+            0x1006e3151 | tee -a symbolication.txt
+
+      - name: Upload Hamster dSYM
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Hamster-993-app-dSYM
+          path: Hamster.xcarchive/dSYMs/Hamster.app.dSYM
+          if-no-files-found: error
+
+      - name: Upload symbolication report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Hamster-993-symbolication-report
+          path: symbolication.txt
+          if-no-files-found: error
