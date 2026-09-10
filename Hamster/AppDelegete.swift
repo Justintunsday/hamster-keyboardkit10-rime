@@ -11,8 +11,8 @@ import UIKit
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-    // 安装文件日志与崩溃捕获(主 App 进程)
-    CrashCatcher.setup(role: "Hamster")
+    // 安装文件日志与崩溃捕获(主 App 进程); 镜像 stderr 以捕获 Swift fatal error 消息
+    CrashCatcher.setup(role: "Hamster", mirrorConsoleToFile: true)
     AppLog.shared.info("AppDelegate didFinishLaunching")
     // Override point for customization after application launch.
     return true

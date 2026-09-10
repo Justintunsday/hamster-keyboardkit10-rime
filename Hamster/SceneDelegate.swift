@@ -105,12 +105,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate, UISceneDelegate {
   }
 
   func sceneDidBecomeActive(_ scene: UIScene) {
+    AppLog.shared.info("sceneDidBecomeActive")
     // Called when the scene has moved from an inactive state to an active state.
     // Use this method to restart any tasks that were paused (or not yet started) when the scene was inactive.
   }
 
   /// 应用注册 quick action
   func sceneWillResignActive(_ scene: UIScene) {
+    AppLog.shared.info("sceneWillResignActive")
     let application = UIApplication.shared
     let rimeDeploy = UIApplicationShortcutItem(type: "RIME", localizedTitle: ShortcutItemType.rimeDeploy.rawValue)
     let rimeSync = UIApplicationShortcutItem(type: "RIME", localizedTitle: ShortcutItemType.rimeSync.rawValue)

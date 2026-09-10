@@ -98,6 +98,7 @@ open class MainViewController: UISplitViewController {
 extension MainViewController {
   override open func viewDidLoad() {
     super.viewDidLoad()
+    AppLog.shared.info("MainViewController.viewDidLoad")
 
     /// 动态控制导航
     mainViewModel.subViewPublished
@@ -123,6 +124,11 @@ extension MainViewController {
       }
       .store(in: &subscriptions)
   }
+
+  override open func viewDidAppear(_ animated: Bool) {
+    super.viewDidAppear(animated)
+    AppLog.shared.info("MainViewController.viewDidAppear")
+  }
 }
 
 // MARK: - implementation UISplitViewControllerDelegate
@@ -138,6 +144,7 @@ extension MainViewController: UISplitViewControllerDelegate {
 
 extension MainViewController {
   func navigationResponse(to subView: SettingsSubView) {
+    AppLog.shared.info("navigationResponse to \(String(describing: subView))")
     switch subView {
     case .inputSchema:
       presentInputSchemaViewController()
