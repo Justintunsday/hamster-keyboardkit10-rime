@@ -281,11 +281,6 @@ public extension FileManager {
     shareURL.appendingPathComponent("backups", isDirectory: true)
   }
 
-  // AppGroup共享下: 日志目录(主 App 与键盘扩展共用)
-  static var appGroupLogDirectoryURL: URL {
-    shareURL.appendingPathComponent("Logs", isDirectory: true)
-  }
-
   // AppGroup共享下：userData目录下: default.custom.yaml文件路径
   static var appGroupUserDataDefaultCustomYaml: URL {
     appGroupUserDataDirectoryURL.appendingPathComponent("default.custom.yaml")

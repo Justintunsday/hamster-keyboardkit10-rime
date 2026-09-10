@@ -203,7 +203,6 @@ public class SettingsViewModel: ObservableObject {
 extension SettingsViewModel {
   /// 启动加载数据
   func loadAppData() async throws {
-    AppLog.shared.info("loadAppData begin, isFirstRunning=\(UserDefaults.standard.isFirstRunning)")
     // PATCH: 仓1.0版本处理
     if let v1FirstRunning = UserDefaults.hamster._firstRunningForV1, v1FirstRunning == false {
       await ProgressHUD.animate("迁移 1.0 配置中……", interaction: false)
@@ -241,22 +240,17 @@ extension SettingsViewModel {
 
     // 首次启动始化输入方案目录
     do {
-      AppLog.shared.info("initSandboxUserDataDirectory begin")
       try FileManager.initSandboxUserDataDirectory(override: true, unzip: true)
       try FileManager.initSandboxBackupDirectory(override: true)
-      AppLog.shared.info("initSandboxUserDataDirectory done")
     } catch {
       Logger.statistics.error("rime init file directory error: \(error.localizedDescription)")
-      AppLog.shared.error("rime init file directory error: \(error.localizedDescription)")
       throw error
     }
 
     var configuration = HamsterAppDependencyContainer.shared.configuration
 
     // 部署 RIME
-    AppLog.shared.info("first-run rime deployment begin")
     try rimeViewModel.rimeContext.deployment(configuration: &configuration)
-    AppLog.shared.info("first-run rime deployment done")
 
     // TODO: 内置雾凇方案，将默认选择方案改为雾凇拼音
     let rimeSchema = RimeSchema(schemaId: "rime_ice", schemaName: "雾凇拼音")
@@ -269,7 +263,6 @@ extension SettingsViewModel {
     HamsterAppDependencyContainer.shared.configuration = configuration
 
     await ProgressHUD.success("部署完成", interaction: false, delay: 1.5)
-    AppLog.shared.info("loadAppData first-run finished")
   }
 
   /// 仓1.0迁移配置参数

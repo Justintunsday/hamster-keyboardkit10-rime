@@ -111,11 +111,9 @@ open class HamsterAppDependencyContainer {
   }
 
   private init() {
-    AppLog.shared.info("HamsterAppDependencyContainer init begin")
     // 创建 long-lived 属性
     self.rimeContext = RimeContext()
     self.mainViewModel = MainViewModel()
-    AppLog.shared.info("HamsterAppDependencyContainer init: rimeContext/mainViewModel ready")
 
     // 判断应用是否首次运行
     // 注意: 首次运行标志（UserDefaults.standard.isFirstRunning）在 SettingsViewModel 的 loadAppData() 方法内重置
@@ -131,11 +129,10 @@ open class HamsterAppDependencyContainer {
         try HamsterConfigurationRepositories.shared.saveToUserDefaultsOnDefault(hamsterConfiguration)
 
         self.configuration = hamsterConfiguration
-        AppLog.shared.info("HamsterAppDependencyContainer init done (first run)")
+
       } catch {
         self.configuration = HamsterConfiguration()
         Logger.statistics.error("init SharedSupport error: \(error.localizedDescription)")
-        AppLog.shared.error("init SharedSupport error: \(error.localizedDescription)")
       }
       return
     }
@@ -153,7 +150,6 @@ open class HamsterAppDependencyContainer {
       }
     } catch {
       Logger.statistics.error("load configuration from UserDefault error: \(error.localizedDescription)")
-      AppLog.shared.error("load configuration from UserDefault error: \(error.localizedDescription)")
       // 如果从 UserDefaults 加载失败，则尝试从配置文件中加载一次
       if let hamsterConfiguration = try? HamsterConfigurationRepositories.shared.loadFromYAML(FileManager.hamsterConfigFileOnSandboxSharedSupport) {
         self.configuration = hamsterConfiguration
@@ -161,7 +157,6 @@ open class HamsterAppDependencyContainer {
         self.configuration = HamsterConfiguration()
       }
     }
-    AppLog.shared.info("HamsterAppDependencyContainer init done")
   }
 
   /// 重置应用配置
