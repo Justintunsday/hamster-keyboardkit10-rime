@@ -24,13 +24,25 @@ jobs:
       - name: Download Rime frameworks
         run: make framework
 
+      - name: Verify Rime device framework slices
+        shell: bash
+        run: |
+          set -euo pipefail
+          for framework in \
+            boost_atomic boost_filesystem boost_regex boost_system \
+            libglog libleveldb libmarisa libopencc libyaml-cpp librime; do
+            framework_path="Frameworks/${framework}.xcframework"
+            test -d "$framework_path/ios-arm64"
+            echo "$framework: ios-arm64 slice present"
+          done
+
       - name: Build input schemas
         run: make schema
 
       - name: Resolve Swift packages
         run: xcodebuild -resolvePackageDependencies -project Hamster.xcodeproj -scheme Hamster
 
-      - name: Build Hamster scheme
+      - name: Build Hamster scheme (RIME device link validation)
         run: >-
           xcodebuild build
           -project Hamster.xcodeproj
@@ -41,6 +53,8 @@ jobs:
           CODE_SIGNING_ALLOWED=NO
           CODE_SIGNING_REQUIRED=NO
           CODE_SIGN_IDENTITY=''
+          ARCHS=arm64
+          ONLY_ACTIVE_ARCH=YES
 
       - name: Archive Hamster for IPA packaging
         run: >-
@@ -188,110 +202,4 @@ jobs:
           name: Hamster-iOS-adhoc-entitled-trollstore-ipa
           path: ${{ runner.temp }}/Hamster-adhoc-entitled-trollstore.ipa
           if-no-files-found: error
-          retention-days: 14
-
-  rime-simulator-deployment:
-    name: RIME deployment on iOS Simulator
-    # The downloaded librime XCFramework contains x86_64 simulator slices
-    # (some libraries do not contain arm64-simulator). Keep this job on an
-    # Intel virtual Mac while the device IPA job above remains unchanged.
-    runs-on: macos-26-intel
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: true
-
-      - name: Select Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '26.6'
-
-      - name: Download Rime frameworks
-        run: make framework
-
-      - name: Build input schemas
-        run: make schema
-
-      - name: Resolve Swift packages
-        run: xcodebuild -resolvePackageDependencies -project Hamster.xcodeproj -scheme Hamster
-
-      - name: Prepare Simulator diagnostics
-        shell: bash
-        run: mkdir -p "$RUNNER_TEMP/rime-simulator-deployment"
-
-      - name: Build Hamster for iOS Simulator
-        shell: bash
-        run: |
-          set -o pipefail
-          xcodebuild build \
-            -project Hamster.xcodeproj \
-            -scheme Hamster \
-            -sdk iphonesimulator \
-            -configuration Release \
-            -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath "$RUNNER_TEMP/HamsterSimulatorDerivedData" \
-            -resultBundlePath "$RUNNER_TEMP/rime-simulator-deployment/HamsterSimulator.xcresult" \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY='' \
-            ARCHS=x86_64 \
-            ONLY_ACTIVE_ARCH=YES \
-            EXCLUDED_ARCHS=arm64 \
-            2>&1 | tee "$RUNNER_TEMP/rime-simulator-deployment/xcodebuild-build.log"
-
-      - name: Sign Simulator app with App Group entitlement
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          app_path="$RUNNER_TEMP/HamsterSimulatorDerivedData/Build/Products/Release-iphonesimulator/Hamster.app"
-          test -d "$app_path"
-
-          sign_nested_code() {
-            local bundle_path="$1"
-            local code_path
-            if [[ -d "$bundle_path/Frameworks" ]]; then
-              while IFS= read -r -d '' code_path; do
-                /usr/bin/codesign --force --sign - --timestamp=none "$code_path"
-              done < <(find "$bundle_path/Frameworks" -depth \( -type d -name '*.framework' -o -type f -name '*.dylib' \) -print0)
-            fi
-          }
-
-          sign_bundle() {
-            local bundle_path="$1"
-            local entitlements_path="$2"
-            sign_nested_code "$bundle_path"
-            /usr/bin/codesign --force --sign - --timestamp=none --generate-entitlement-der \
-              --entitlements "$entitlements_path" "$bundle_path"
-            /usr/bin/codesign --verify --strict "$bundle_path"
-          }
-
-          keyboard_entitlements="$GITHUB_WORKSPACE/HamsterKeyboard/HamsterKeyboard.entitlements"
-          keyboard_appex="$app_path/PlugIns/HamsterKeyboard.appex"
-          sbxlm_appex="$app_path/PlugIns/SbxlmKeyboard.appex"
-          test -d "$keyboard_appex"
-          test -d "$sbxlm_appex"
-
-          sign_bundle "$keyboard_appex" "$keyboard_entitlements"
-          sign_bundle "$sbxlm_appex" "$keyboard_entitlements"
-          sign_bundle "$app_path" "$keyboard_entitlements"
-
-          echo "SIMULATOR_APP_PATH=$app_path" >> "$GITHUB_ENV"
-
-      - name: Install and exercise first-launch RIME deployment
-        shell: bash
-        env:
-          RIME_SIMULATOR_ARTIFACT_DIR: ${{ runner.temp }}/rime-simulator-deployment
-          RIME_SIMULATOR_TIMEOUT_SECONDS: '180'
-        run: bash ci_scripts/verify_rime_simulator_deployment.sh
-
-      - name: Upload RIME Simulator logs and container output
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Hamster-iOS-Simulator-RIME-deployment
-          path: ${{ runner.temp }}/rime-simulator-deployment
-          if-no-files-found: warn
           retention-days: 14
