@@ -9,8 +9,35 @@ import Foundation
 
 /// Hamster 应用常量
 public enum HamsterConstants {
-  /// AppGroup ID
-  public static let appGroupName = "group.dev.fuxiao.app.Hamster"
+  /// App Group ID used by the signed-in Xcode build.
+  public static let defaultAppGroupName = "group.dev.fuxiao.app.Hamster"
+
+  /// SideStore writes the App Groups from the active provisioning profile to
+  /// this key while preparing an app for re-signing.
+  private static let sideStoreAppGroupsInfoPlistKey = "ALTAppGroups"
+
+  /// App Group ID authorized by the current app signature.
+  ///
+  /// SideStore may append the free team's identifier to the group's name when
+  /// it creates a provisioning profile. Reading its Info.plist metadata keeps
+  /// the app and keyboard extension on the same authorized group after that
+  /// rewrite, while the checked-in group remains the fallback for Xcode builds.
+  public static var appGroupName: String {
+    appGroupName(from: Bundle.main.infoDictionary)
+  }
+
+  static func appGroupName(from infoDictionary: [String: Any]?) -> String {
+    let appGroups = infoDictionary?[sideStoreAppGroupsInfoPlistKey] as? [String] ?? []
+    let originalGroupPrefix = defaultAppGroupName + "."
+
+    if let matchingGroup = appGroups.first(where: {
+      $0 == defaultAppGroupName || $0.hasPrefix(originalGroupPrefix)
+    }) {
+      return matchingGroup
+    }
+
+    return appGroups.first(where: { $0.hasPrefix("group.") }) ?? defaultAppGroupName
+  }
 
   /// iCloud ID
   public static let iCloudID = "iCloud.dev.fuxiao.app.hamsterapp"

@@ -11,6 +11,34 @@ final class AppGroupAccessTest: XCTestCase {
     XCTAssertTrue(message.contains("重新安装"))
   }
 
+  func testSideStoreAppGroupTakesPrecedenceOverTheCheckedInGroup() {
+    let sideStoreGroup = "group.dev.fuxiao.app.Hamster.ABC123"
+    let resolvedGroup = HamsterConstants.appGroupName(from: [
+      "ALTAppGroups": [sideStoreGroup],
+    ])
+
+    XCTAssertEqual(resolvedGroup, sideStoreGroup)
+  }
+
+  func testAppGroupPrefersTheHamsterGroupWhenSeveralGroupsArePresent() {
+    let sideStoreGroup = "group.dev.fuxiao.app.Hamster.ABC123"
+    let resolvedGroup = HamsterConstants.appGroupName(from: [
+      "ALTAppGroups": [
+        "group.com.example.other",
+        sideStoreGroup,
+      ],
+    ])
+
+    XCTAssertEqual(resolvedGroup, sideStoreGroup)
+  }
+
+  func testAppGroupFallsBackWhenSideStoreMetadataIsAbsent() {
+    XCTAssertEqual(
+      HamsterConstants.appGroupName(from: [:]),
+      HamsterConstants.defaultAppGroupName
+    )
+  }
+
   func testAppGroupContainerAccessThrowsWithoutEntitlement() throws {
     let existingContainer = try? FileManager.appGroupContainerURL()
     try XCTSkipUnless(existingContainer == nil, "测试宿主已配置 App Group，跳过无权限场景")

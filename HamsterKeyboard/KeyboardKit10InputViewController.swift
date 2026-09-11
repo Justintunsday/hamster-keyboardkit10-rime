@@ -6,6 +6,7 @@
 //
 
 import Combine
+import HamsterKit
 import HamsterKeyboardKit
 import KeyboardKit
 import SwiftUI
@@ -88,7 +89,7 @@ private extension KeyboardApp {
   static var hamster: KeyboardApp {
     .init(
       name: "仓输入法",
-      appGroupId: "group.dev.fuxiao.app.Hamster"
+      appGroupId: HamsterConstants.appGroupName
     )
   }
 }
