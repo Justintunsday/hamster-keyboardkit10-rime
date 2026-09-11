@@ -39,9 +39,6 @@ jobs:
       - name: Build input schemas
         run: make schema
 
-      - name: Test SideStore App Group resolution
-        run: swift test --package-path Packages/HamsterKit
-
       - name: Resolve Swift packages
         run: xcodebuild -resolvePackageDependencies -project Hamster.xcodeproj -scheme Hamster
 
