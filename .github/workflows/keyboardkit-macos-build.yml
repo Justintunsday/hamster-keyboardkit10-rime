@@ -217,20 +217,26 @@ jobs:
       - name: Resolve Swift packages
         run: xcodebuild -resolvePackageDependencies -project Hamster.xcodeproj -scheme Hamster
 
+      - name: Prepare Simulator diagnostics
+        shell: bash
+        run: mkdir -p "$RUNNER_TEMP/rime-simulator-deployment"
+
       - name: Build Hamster for iOS Simulator
         shell: bash
-        run: >-
-          xcodebuild build
-          -project Hamster.xcodeproj
-          -scheme Hamster
-          -sdk iphonesimulator
-          -arch x86_64
-          -configuration Release
-          -destination 'generic/platform=iOS Simulator'
-          -derivedDataPath "$RUNNER_TEMP/HamsterSimulatorDerivedData"
-          CODE_SIGNING_ALLOWED=NO
-          CODE_SIGNING_REQUIRED=NO
-          CODE_SIGN_IDENTITY=''
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Hamster.xcodeproj \
+            -scheme Hamster \
+            -sdk iphonesimulator \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/HamsterSimulatorDerivedData" \
+            -resultBundlePath "$RUNNER_TEMP/rime-simulator-deployment/HamsterSimulator.xcresult" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY='' \
+            2>&1 | tee "$RUNNER_TEMP/rime-simulator-deployment/xcodebuild-build.log"
 
       - name: Sign Simulator app with App Group entitlement
         shell: bash
