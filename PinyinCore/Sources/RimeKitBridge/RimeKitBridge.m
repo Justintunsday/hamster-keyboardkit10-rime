@@ -20,8 +20,8 @@ static NSObject *RimeKitGlobalLock(void) {
     return lock;
 }
 
-static RimeApi *RimeKitAPI(void) {
-    return rime_get_api();
+static RimeApi_stdbool *RimeKitAPI(void) {
+    return rime_get_api_stdbool();
 }
 
 static BOOL RimeKitIsDirectory(NSString *path) {
@@ -114,11 +114,11 @@ static NSString *RimeKitString(const char *value) {
     RimeKitSnapshot *_currentSnapshot;
 }
 - (RimeKitSnapshot *)processKeyCode:(int)keyCode;
-- (NSString * _Nullable)consumeCommitWithAPI:(RimeApi *)api;
+- (NSString * _Nullable)consumeCommitWithAPI:(RimeApi_stdbool *)api;
 - (RimeKitSnapshot *)snapshotWithCommittedText:(NSString * _Nullable)committedText;
 @end
 
-static BOOL RimeKitSetup(RimeApi *api,
+static BOOL RimeKitSetup(RimeApi_stdbool *api,
                          NSString *sharedDataPath,
                          NSString *userDataPath,
                          NSError **error) {
@@ -152,7 +152,7 @@ static BOOL RimeKitSetup(RimeApi *api,
     return YES;
 }
 
-static BOOL RimeKitEnsureDeployment(RimeApi *api,
+static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
                                     NSString *sharedDataPath,
                                     NSString *userDataPath,
                                     NSError **error) {
@@ -232,7 +232,7 @@ static BOOL RimeKitEnsureDeployment(RimeApi *api,
             return NO;
         }
 
-        RimeApi *api = RimeKitAPI();
+        RimeApi_stdbool *api = RimeKitAPI();
         @synchronized (RimeKitGlobalLock()) {
             if (!RimeKitSetup(api, _sharedDataPath, _userDataPath, error)) {
                 return NO;
@@ -282,7 +282,7 @@ static BOOL RimeKitEnsureDeployment(RimeApi *api,
 - (void)stop {
     @synchronized (self) {
         if (_sessionID != 0) {
-            RimeApi *api = RimeKitAPI();
+            RimeApi_stdbool *api = RimeKitAPI();
             if (api != NULL && api->destroy_session != NULL) {
                 api->destroy_session(_sessionID);
             }
@@ -316,7 +316,7 @@ static BOOL RimeKitEnsureDeployment(RimeApi *api,
 
 - (RimeKitSnapshot *)reset {
     @synchronized (self) {
-        RimeApi *api = RimeKitAPI();
+        RimeApi_stdbool *api = RimeKitAPI();
         if (_sessionID != 0 && api != NULL && api->clear_composition != NULL) {
             api->clear_composition(_sessionID);
         }
@@ -330,7 +330,7 @@ static BOOL RimeKitEnsureDeployment(RimeApi *api,
         if (_sessionID == 0 || text.length == 0) {
             return _currentSnapshot;
         }
-        RimeApi *api = RimeKitAPI();
+        RimeApi_stdbool *api = RimeKitAPI();
         if (api == NULL || api->process_key == NULL) {
             return _currentSnapshot;
         }
@@ -342,7 +342,7 @@ static BOOL RimeKitEnsureDeployment(RimeApi *api,
 }
 
 - (RimeKitSnapshot *)processKeyCode:(int)keyCode {
-    RimeApi *api = RimeKitAPI();
+    RimeApi_stdbool *api = RimeKitAPI();
     if (_sessionID != 0 && api != NULL && api->process_key != NULL) {
         api->process_key(_sessionID, keyCode, 0);
     }
@@ -371,7 +371,7 @@ static BOOL RimeKitEnsureDeployment(RimeApi *api,
 
 - (RimeKitSnapshot *)selectCandidateAtIndex:(NSInteger)index {
     @synchronized (self) {
-        RimeApi *api = RimeKitAPI();
+        RimeApi_stdbool *api = RimeKitAPI();
         if (_sessionID != 0 && api != NULL && api->select_candidate_on_current_page != NULL && index >= 0) {
             api->select_candidate_on_current_page(_sessionID, (size_t)index);
         }
@@ -381,7 +381,7 @@ static BOOL RimeKitEnsureDeployment(RimeApi *api,
     }
 }
 
-- (NSString *)consumeCommitWithAPI:(RimeApi *)api {
+- (NSString *)consumeCommitWithAPI:(RimeApi_stdbool *)api {
     if (_sessionID == 0 || api == NULL || api->get_commit == NULL) {
         return nil;
     }
@@ -399,7 +399,7 @@ static BOOL RimeKitEnsureDeployment(RimeApi *api,
 }
 
 - (RimeKitSnapshot *)snapshotWithCommittedText:(NSString *)committedText {
-    RimeApi *api = RimeKitAPI();
+    RimeApi_stdbool *api = RimeKitAPI();
     if (_sessionID == 0 || api == NULL) {
         return [[RimeKitSnapshot alloc] initWithPreedit:@""
                                                rawInput:@""
