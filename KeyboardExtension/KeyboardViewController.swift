@@ -23,11 +23,8 @@ final class KeyboardViewController: KeyboardInputViewController {
     }
 
     override func viewWillSetupKeyboardView() {
-        setupKeyboardView { [weak self] controller in
-            guard let self else {
-                return EmptyView()
-            }
-            return PinyinKeyboardView(
+        setupKeyboardView { [unowned self] controller in
+            PinyinKeyboardView(
                 services: controller.services,
                 session: self.session,
                 onTransition: { [weak self] transition in
