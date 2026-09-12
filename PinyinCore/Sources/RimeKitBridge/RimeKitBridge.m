@@ -1,6 +1,6 @@
 #import "RimeKitBridge.h"
 
-#import <RimeStatic/RimeShim.h>
+#import <RimeShim.h>
 
 #include <dispatch/dispatch.h>
 #include <string.h>
