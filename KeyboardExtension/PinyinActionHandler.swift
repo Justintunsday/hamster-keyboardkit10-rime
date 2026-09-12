@@ -1,7 +1,7 @@
 import KeyboardKit
 import PinyinCore
 
-final class PinyinActionHandler: KeyboardAction.StandardActionHandler {
+final class PinyinActionHandler: KeyboardAction.StandardKeyboardActionHandler {
     private let session: KeyboardSession
     private let applyTransition: (PinyinTransition) -> Void
     private weak var hostController: KeyboardInputViewController?
