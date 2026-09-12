@@ -15,9 +15,9 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Select Xcode 16.4
+      - name: Select Xcode 26.3
         run: |
-          sudo xcode-select --switch /Applications/Xcode_16.4.app
+          sudo xcode-select --switch /Applications/Xcode_26.3.app
           xcodebuild -version
 
       - name: Cache SwiftPM artifacts

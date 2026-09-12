@@ -2,7 +2,7 @@ name: PinyinKeyboard
 
 options:
   minimumXcodeGenVersion: 2.44.1
-  xcodeVersion: "16.4"
+  xcodeVersion: "26.3"
   projectFormat: xcode16_0
   deploymentTarget:
     iOS: "16.0"
