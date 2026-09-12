@@ -40,8 +40,13 @@ jobs:
 
       - name: Package unsigned IPA
         run: |
+          APP_PATH="build/DerivedData/Build/Products/Release-iphoneos/PinyinKeyboard.app"
+          KEYBOARDKIT_FRAMEWORK="$(find build/DerivedData/SourcePackages -type d -name KeyboardKit.framework -path '*/ios-arm64/KeyboardKit.framework' -print -quit)"
+          test -n "$KEYBOARDKIT_FRAMEWORK"
+          mkdir -p "$APP_PATH/Frameworks"
+          ditto "$KEYBOARDKIT_FRAMEWORK" "$APP_PATH/Frameworks/KeyboardKit.framework"
           mkdir -p artifacts/Payload
-          cp -R build/DerivedData/Build/Products/Release-iphoneos/PinyinKeyboard.app artifacts/Payload/
+          cp -R "$APP_PATH" artifacts/Payload/
           cd artifacts
           zip -r PinyinKeyboard-unsigned.ipa Payload
 
