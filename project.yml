@@ -50,7 +50,7 @@ targets:
         INFOPLIST_FILE: KeyboardExtension/Info.plist
         SKIP_INSTALL: YES
         APPLICATION_EXTENSION_API_ONLY: YES
-        PINYIN_ENABLE_RIME: 0
+        PINYIN_ENABLE_RIME: 1
         LD_RUNPATH_SEARCH_PATHS:
           - "$(inherited)"
           - "@executable_path/Frameworks"
@@ -60,7 +60,7 @@ targets:
         product: PinyinCore
       - package: KeyboardKit
         product: KeyboardKit
-        link: true
+        link: false
         embed: false
 
   PinyinCoreTests:

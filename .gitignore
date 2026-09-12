@@ -6,3 +6,7 @@ DerivedData/
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
 PinyinKeyboard.xcodeproj/
+artifacts/
+.scratch-*
+PinyinCore/Sources/PinyinCore/Resources/Rime/*
+!PinyinCore/Sources/PinyinCore/Resources/Rime/README.txt

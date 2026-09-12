@@ -4,6 +4,12 @@ on:
   push:
   pull_request:
 
+env:
+  RIME_ICE_VERSION: 2026.06.30
+  RIME_ICE_URL: https://github.com/iDvel/rime-ice/releases/download/2026.06.30/full.zip
+  RIME_ICE_SHA256: 675d23b070be00e1b800f9a6db033ef98f4493cd5b568ed8aa3b3541769c46ac
+  LIBRIME_VERSION: 1.16.1-pack.8
+
 jobs:
   build:
     runs-on: macos-15
@@ -15,7 +21,7 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Select Xcode 26.3
+      - name: Select Xcode
         run: |
           sudo xcode-select --switch /Applications/Xcode_26.3.app
           xcodebuild -version
@@ -28,30 +34,65 @@ jobs:
             PinyinCore/.build
             ~/Library/Caches/org.swift.swiftpm
             ~/Library/Developer/Xcode/DerivedData
-          key: ${{ runner.os }}-swiftpm-${{ hashFiles('Package.swift', 'PinyinCore/Package.swift', 'project.yml') }}
+          key: ${{ runner.os }}-swiftpm-${{ hashFiles('PinyinCore/Package.swift', 'project.yml') }}
           restore-keys: |
             ${{ runner.os }}-swiftpm-
+
+      - name: Prepare pinned rime-ice resources
+        env:
+          RIME_ARCHIVE: ${{ runner.temp }}/rime-ice-${{ env.RIME_ICE_VERSION }}.zip
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 "$RIME_ICE_URL" --output "$RIME_ARCHIVE"
+          echo "$RIME_ICE_SHA256  $RIME_ARCHIVE" | shasum --algorithm 256 --check --strict
+          rm -rf PinyinCore/Sources/PinyinCore/Resources/Rime
+          mkdir -p PinyinCore/Sources/PinyinCore/Resources/Rime
+          ditto -x -k "$RIME_ARCHIVE" PinyinCore/Sources/PinyinCore/Resources/Rime
+          test -f PinyinCore/Sources/PinyinCore/Resources/Rime/default.yaml
+          test -f PinyinCore/Sources/PinyinCore/Resources/Rime/rime_ice.schema.yaml
+          test -f PinyinCore/Sources/PinyinCore/Resources/Rime/rime_ice.dict.yaml
 
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Build unsigned iOS device archive
-        run: xcodebuild -project PinyinKeyboard.xcodeproj -scheme PinyinKeyboard -sdk iphoneos -configuration Release -destination 'generic/platform=iOS' -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+      - name: Resolve Swift packages
+        run: xcodebuild -resolvePackageDependencies -project PinyinKeyboard.xcodeproj
+
+      - name: Build unsigned iOS device product
+        run: |
+          xcodebuild \
+            -project PinyinKeyboard.xcodeproj \
+            -scheme PinyinKeyboard \
+            -sdk iphoneos \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
 
       - name: Package unsigned IPA
         run: |
+          set -euo pipefail
           APP_PATH="build/DerivedData/Build/Products/Release-iphoneos/PinyinKeyboard.app"
-          KEYBOARDKIT_FRAMEWORK="$(find build/DerivedData/SourcePackages -type d -name KeyboardKit.framework -path '*/ios-arm64/KeyboardKit.framework' -print -quit)"
+          test -d "$APP_PATH"
+
+          KEYBOARDKIT_FRAMEWORK="$(find build/DerivedData -type d -name KeyboardKit.framework -print -quit)"
           test -n "$KEYBOARDKIT_FRAMEWORK"
           mkdir -p "$APP_PATH/Frameworks"
-          ditto "$KEYBOARDKIT_FRAMEWORK" "$APP_PATH/Frameworks/KeyboardKit.framework"
+          if [ ! -d "$APP_PATH/Frameworks/KeyboardKit.framework" ]; then
+            ditto "$KEYBOARDKIT_FRAMEWORK" "$APP_PATH/Frameworks/KeyboardKit.framework"
+          fi
+
+          test -n "$(find "$APP_PATH" -name default.yaml -print -quit)"
+          test -n "$(find "$APP_PATH" -name rime_ice.schema.yaml -print -quit)"
           mkdir -p artifacts/Payload
           cp -R "$APP_PATH" artifacts/Payload/
-          cd artifacts
-          zip -r PinyinKeyboard-unsigned.ipa Payload
+          (cd artifacts && ditto -c -k --sequesterRsrc --keepParent Payload PinyinKeyboard-unsigned.ipa)
+          shasum --algorithm 256 artifacts/PinyinKeyboard-unsigned.ipa
 
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4
         with:
-          name: PinyinKeyboard-unsigned.ipa
+          name: PinyinKeyboard-unsigned-iphoneos
           path: artifacts/PinyinKeyboard-unsigned.ipa

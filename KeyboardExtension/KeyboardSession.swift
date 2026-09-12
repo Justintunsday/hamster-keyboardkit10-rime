@@ -5,8 +5,19 @@ final class KeyboardSession: ObservableObject {
     @Published private(set) var state: CompositionState
     private let machine: PinyinInputStateMachine
 
-    init(engine: PinyinEngine = LocalPinyinEngine()) {
-        let machine = PinyinInputStateMachine(engine: engine)
+    init(engine: PinyinEngine? = nil) {
+        let rimeEngine = RimeEngineAdapter()
+        let rimeSession = rimeEngine.makeBundledSession(
+            applicationIdentifier: "PinyinKeyboard.KeyboardExtension"
+        )
+        if let rimeSession {
+            try? rimeSession.start()
+        }
+
+        let machine = PinyinInputStateMachine(
+            engine: engine ?? rimeEngine,
+            rimeSession: rimeSession
+        )
         self.machine = machine
         self.state = machine.state
     }

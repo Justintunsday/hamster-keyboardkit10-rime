@@ -1,24 +1,34 @@
-# Rime Integration Boundary
+# RIME Integration
 
-当前版本不启用 Rime。
+默认中文会话使用 `RimeStatic 1.16.1-pack.8`。RIME native bridge 和 session adapter 从零编写，仅使用 librime 公开 C API。GuruIM 只作为公开架构参考，不作为代码依赖；不集成其 AI、剪贴板、GURU、云同步或文件服务模块。
 
-## 目标组件
+## 固定输入组件
 
-- 项目：ghostflyby/librime-xcframework
-- 目标构建：RimeStatic 1.16.1-pack.1
-- 预期用途：在 PinyinEngine 协议后提供完整本地词库引擎。
+- `ghostflyby/librime-xcframework` tag `1.16.1-pack.8`，commit `c3cbebee642a3f880fcd038f03b59842f8a5c7d1`。
+- `RimeStatic` XCFramework SHA256：`25f4cd03c6c22a6e41504b567f26928491e9f767c22a9dd6b8697e205a0cadc0`。
+- `iDvel/rime-ice` release `2026.06.30`，commit `6810e8916d160498620a16fef2135956fecbd485`。
+- 雾凇 `full.zip` SHA256：`675d23b070be00e1b800f9a6db033ef98f4493cd5b568ed8aa3b3541769c46ac`。
 
-## 必须完成的工作
+## 会话边界
 
-1. 在 macOS/Xcode 中验证静态库、头文件和 Swift/Objective-C 模块映射。
-2. 明确 rime_api_t 的初始化、创建 session、部署完成检查、commit、候选读取和销毁顺序。
-3. 将 Rime 数据部署到键盘扩展可读位置。
-4. 验证 iOS 键盘扩展的二进制架构、内存占用和启动时间。
-5. 逐个记录二进制、头文件、词库和数据文件的许可证。
-6. 增加带真实资源的单元测试和设备测试。
+1. `RimeResourceInstaller` 从 Swift package resource bundle 复制 `default.yaml`、schema、词典、Lua 和 OpenCC 资源到键盘扩展 Application Support。
+2. `RimeKitSession` 调用 `rime_get_api()`，执行 `setup`、`initialize`、必要时 `deployer_initialize/deploy`、`create_session` 和 `select_schema`。
+3. `RimeKitBridge` 将 `RimeContext`、`RimeCommit` 和 `RimeStatus` 深拷贝成 Objective-C snapshot，随后由 `RimeKitSessionDriver` 转换为 `RimeSnapshot`。
+4. `PinyinInputStateMachine` 将字母、退格、空格、回车、候选点击和标点映射为 RIME key event，并把 commit delta 写入 `UITextDocumentProxy`。
+5. 停止时销毁 `RimeSessionId`。宿主文本框写入只经过 `TextDocumentProxyAdapter`。
 
-## 当前边界
+## 回退条件
 
-RimeEngineAdapter 实现 PinyinEngine，但 status 为 unavailable，start() 返回 notConfigured，候选和切分为空。这样保持编译安全，不伪造 C API 生命周期。
+缺少资源、资源校验文件缺失、部署失败、schema 选择失败或 session 操作抛错时，状态机使用 `LocalPinyinEngine`。LocalPinyinEngine 只提供小型手工词表，不声称生产级词库覆盖率或专有排序质量。
 
-project.yml 提供 PINYIN_ENABLE_RIME=0。在上述检查完成前不得改为启用，也不得在未验证资源部署时提交 Rime 数据。
+## 资源构建
+
+仓库只提交资源占位目录。macOS 和 CI 执行：
+
+    bash scripts/prepare-rime-resources.sh
+
+脚本完成固定版本下载、SHA256 校验和 Swift package resource 目录准备。CI 在 `xcodegen generate` 前执行该步骤，因此 IPA 包含实际 RIME 资源。运行时资源复制到可写目录，不修改 bundle。
+
+## 未验证项
+
+Windows 无法运行 Xcode、iOS SDK、XcodeGen 或 SwiftPM Apple binary target。Release iphoneos 无签名构建由 macOS Actions 执行。真机启动时间、内存峰值、App Store 签名和键盘扩展系统启用状态需要设备验证。

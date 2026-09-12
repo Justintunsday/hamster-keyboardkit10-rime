@@ -14,10 +14,31 @@ let package = Package(
             targets: ["PinyinCore"]
         )
     ],
+    dependencies: [
+        .package(
+            url: "https://github.com/ghostflyby/librime-xcframework.git",
+            exact: "1.16.1-pack.8"
+        )
+    ],
     targets: [
         .target(
+            name: "RimeKitBridge",
+            dependencies: [
+                .product(name: "RimeStatic", package: "librime-xcframework")
+            ],
+            path: "Sources/RimeKitBridge",
+            publicHeadersPath: "include",
+            linkerSettings: [
+                .linkedLibrary("c++")
+            ]
+        ),
+        .target(
             name: "PinyinCore",
-            path: "Sources/PinyinCore"
+            dependencies: ["RimeKitBridge"],
+            path: "Sources/PinyinCore",
+            resources: [
+                .copy("Resources/Rime")
+            ]
         ),
         .testTarget(
             name: "PinyinCoreTests",
