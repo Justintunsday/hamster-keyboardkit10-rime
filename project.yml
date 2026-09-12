@@ -30,12 +30,17 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.PinyinKeyboard
         INFOPLIST_FILE: App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: App/PinyinKeyboard.entitlements
         TARGETED_DEVICE_FAMILY: "1,2"
     dependencies:
       - target: PinyinKeyboardExtension
         embed: true
       - package: KeyboardKit
         product: KeyboardKit
+        link: true
+        embed: false
+      - package: PinyinCore
+        product: PinyinCore
         link: true
         embed: false
 
@@ -48,6 +53,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.PinyinKeyboard.KeyboardExtension
         INFOPLIST_FILE: KeyboardExtension/Info.plist
+        CODE_SIGN_ENTITLEMENTS: KeyboardExtension/PinyinKeyboardExtension.entitlements
         SKIP_INSTALL: YES
         APPLICATION_EXTENSION_API_ONLY: YES
         PINYIN_ENABLE_RIME: 1

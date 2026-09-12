@@ -347,11 +347,8 @@ public enum RimeResourceInstaller {
         }
     }
 
-    public static func prepare(
-        bundle: Bundle? = nil,
-        applicationIdentifier: String = "PinyinKeyboard"
-    ) throws -> RimeResourcePaths {
-        guard let source = bundledResourceURL(bundle: bundle ?? .module) else {
+    static func validatedBundledResourceRoot(bundle: Bundle = .module) throws -> URL {
+        guard let source = bundledResourceURL(bundle: bundle) else {
             throw RimeResourceError.bundleResourceMissing
         }
 
@@ -372,43 +369,13 @@ public enum RimeResourceInstaller {
                 "Bundled rime_ice schema requires Lua, unavailable in RimeStatic 1.16.1-pack.8"
             )
         }
+        return source
+    }
 
-        let baseURL = (fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? fileManager.temporaryDirectory)
-            .appendingPathComponent(applicationIdentifier, isDirectory: true)
-        let sharedURL = baseURL.appendingPathComponent("RimeShared", isDirectory: true)
-        let userURL = baseURL.appendingPathComponent("RimeUser", isDirectory: true)
-        try fileManager.createDirectory(at: baseURL, withIntermediateDirectories: true)
-        try fileManager.createDirectory(at: userURL, withIntermediateDirectories: true)
-
-        let markerURL = sharedURL.appendingPathComponent(".pinyin-keyboard-resource-version")
-        let userMarkerURL = userURL.appendingPathComponent(".pinyin-keyboard-resource-version")
-        let installedVersion = try? String(contentsOf: markerURL, encoding: .utf8)
-        let sharedResourcesComplete = requiredResourceFiles.allSatisfy {
-            fileManager.fileExists(atPath: sharedURL.appendingPathComponent($0).path)
-        }
-        var sharedWasRefreshed = false
-        if installedVersion?.trimmingCharacters(in: .whitespacesAndNewlines) != resourceVersion
-            || !sharedResourcesComplete {
-            if fileManager.fileExists(atPath: sharedURL.path) {
-                try fileManager.removeItem(at: sharedURL)
-            }
-            try fileManager.copyItem(at: source, to: sharedURL)
-            try resourceVersion.write(to: markerURL, atomically: true, encoding: .utf8)
-            sharedWasRefreshed = true
-        }
-
-        let installedUserVersion = try? String(contentsOf: userMarkerURL, encoding: .utf8)
-        if installedUserVersion?.trimmingCharacters(in: .whitespacesAndNewlines) != resourceVersion
-            || sharedWasRefreshed {
-            let buildURL = userURL.appendingPathComponent("build", isDirectory: true)
-            if fileManager.fileExists(atPath: buildURL.path) {
-                try fileManager.removeItem(at: buildURL)
-            }
-            try resourceVersion.write(to: userMarkerURL, atomically: true, encoding: .utf8)
-        }
-
-        let customDefault = userURL.appendingPathComponent("default.custom.yaml")
+    static func writeManagedUserConfiguration(to userDataURL: URL) throws {
+        let fileManager = FileManager.default
+        try fileManager.createDirectory(at: userDataURL, withIntermediateDirectories: true)
+        let customDefault = userDataURL.appendingPathComponent("default.custom.yaml")
         let contents = """
         # Managed by PinyinKeyboard. Keep the mobile schema selected.
         patch:
@@ -421,8 +388,32 @@ public enum RimeResourceInstaller {
             || existingCustomDefault?.contains("translator/enable_user_dict: true") != true {
             try contents.write(to: customDefault, atomically: true, encoding: .utf8)
         }
+    }
 
-        return RimeResourcePaths(sharedDataPath: sharedURL, userDataPath: userURL)
+    static func validateDeploymentOutputs(
+        sharedDataPath: URL,
+        userDataPath: URL,
+        schemaID: String
+    ) throws {
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: sharedDataPath.path) else {
+            throw RimeResourceError.requiredFileMissing("shared data directory")
+        }
+        guard fileManager.fileExists(atPath: userDataPath.path) else {
+            throw RimeResourceError.requiredFileMissing("user data directory")
+        }
+        let buildURL = userDataPath.appendingPathComponent("build", isDirectory: true)
+        let requiredOutputs = [
+            "default.yaml",
+            "\(schemaID).schema.yaml",
+            "\(schemaID).prism.bin",
+            "\(schemaID).table.bin"
+        ]
+        for file in requiredOutputs where !fileManager.fileExists(
+            atPath: buildURL.appendingPathComponent(file).path
+        ) {
+            throw RimeResourceError.requiredFileMissing("build/\(file)")
+        }
     }
 
     private static func bundledResourceURL(bundle: Bundle) -> URL? {
@@ -563,17 +554,14 @@ public struct RimeEngineAdapter: Sendable {
         RimeSession(configuration: configuration, driver: driver)
     }
 
-    public func makeBundledSession(
-        applicationIdentifier: String = "PinyinKeyboard"
+    public func makeSharedContainerSession(
+        appGroupIdentifier: String = RimeDeploymentCoordinator.defaultAppGroupIdentifier
     ) throws -> RimeSession {
-        guard status == .configured else {
-            throw RimeEngineError.resourcesUnavailable
-        }
         let paths: RimeResourcePaths
         do {
-            paths = try RimeResourceInstaller.prepare(
-                applicationIdentifier: applicationIdentifier
-            )
+            paths = try RimeDeploymentCoordinator(
+                appGroupIdentifier: appGroupIdentifier
+            ).sessionPathsIfReady()
         } catch {
             throw RimeEngineError.native(error.localizedDescription)
         }

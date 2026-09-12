@@ -15,7 +15,7 @@ LocalPinyinEngine 使用独立的小型词表。引擎执行以下操作：
 3. 使用词频和完整匹配加分排序。
 4. 对词表拼音执行前缀检索。
 
-RimeEngineAdapter 默认创建 RimeKitSessionDriver。RimeKitBridge 只封装 librime 公共 C API；RimeResourceInstaller 负责校验雾凇资源及依赖、复制到扩展 Application Support、加入 OpenCC 简繁转换资源、等待 maintenance thread、验证 build 输出和 schema。RimeStatic 1.16.1-pack.8 不含 Lua runtime，因此构建阶段用 `scripts/rime_ice.mobile.schema.yaml` 替换完整雾凇 schema，保留 rime-ice 全拼词典和用户词典，移除不可用的 `lua_*` 组件。RIME 无法启动、部署失败、schema 不匹配或 context 读取失败时进入显式错误状态，不调用 LocalPinyinEngine。
+RimeEngineAdapter 默认创建 RimeKitSessionDriver。RimeKitBridge 只封装 librime 公共 C API。RimeDeploymentCoordinator 只由主 App 调用：它校验雾凇资源及依赖，在 App Group `group.com.example.PinyinKeyboard` 的 staging 目录运行 maintenance，验证 build 输出和 schema 后写入原子完成标记。RimeStatic 1.16.1-pack.8 不含 Lua runtime，因此构建阶段用 `scripts/rime_ice.mobile.schema.yaml` 替换完整雾凇 schema，保留 rime-ice 全拼词典、OpenCC 简繁转换资源和用户词典，移除不可用的 `lua_*` 组件。RIME 无法启动、部署失败、schema 不匹配或 context 读取失败时进入显式错误状态，不调用 LocalPinyinEngine。
 
 ### KeyboardExtension
 
@@ -36,7 +36,7 @@ PinyinKeyboardView 在标准 KeyboardKit 视图上方增加候选栏和模式栏
 
 ### App
 
-主 App 不处理按键。它显示启用步骤、离线状态、开放访问状态和设置入口。
+主 App 不处理按键。它在启动时或重试按钮触发部署，显示未部署、部署中、成功、失败状态，并使用后台任务保护部署过程。它显示启用步骤、离线状态、完全访问要求和设置入口。
 
 ## 数据流
 
@@ -53,8 +53,9 @@ PinyinKeyboardView 在标准 KeyboardKit 视图上方增加候选栏和模式栏
 
 ## 安全边界
 
-- 键盘扩展不启用开放访问。
-- 不配置 App Group。
+- 键盘扩展必须启用完全访问。
+- App 与键盘扩展使用 App Group `group.com.example.PinyinKeyboard`。
+- 键盘扩展只读取原子完成标记和已部署目录，不执行 RIME maintenance/deploy，不复制完整词典。
 - 不配置网络权限。
 - 不联网处理按键。
 - 不使用私有 KeyboardKit API。

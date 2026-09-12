@@ -19,7 +19,7 @@
 
 ## 架构
 
-- PinyinCore：Swift Package。实现状态机、显式 LocalPinyinEngine 测试实现、RimeKit 风格 Objective-C bridge、持久 RIME session/snapshot 边界和资源安装器。
+- PinyinCore：Swift Package。实现状态机、显式 LocalPinyinEngine 测试实现、RimeKit 风格 Objective-C bridge、持久 RIME session/snapshot 边界和共享容器部署协调器。
 - KeyboardExtension：UITextDocumentProxy 适配、KeyboardKit action handler、候选栏和标准键盘视图。
 - App：启用步骤、隐私说明、离线状态和设置入口。
 - project.yml：XcodeGen 工程描述。
@@ -36,11 +36,11 @@ KeyboardKit 固定为 10.9.4。只使用公开 KeyboardInputViewController、Key
     xcodebuild -resolvePackageDependencies -project PinyinKeyboard.xcodeproj
     xcodebuild -project PinyinKeyboard.xcodeproj -scheme PinyinKeyboard -sdk iphoneos -configuration Release -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
 
-`scripts/prepare-rime-resources.sh` 下载固定版本并校验 SHA256，随后写入移动核心 schema。运行时等待 RIME maintenance 完成，检查 `build/default.yaml`、schema、prism 和 table 输出，并显示 deployment、schema、plugin、context 状态。GitHub Actions 在生成 Xcode 工程前执行同一资源准备逻辑，并上传未签名 IPA。生成的 PinyinKeyboard.xcodeproj 不提交到当前工作区。Windows 环境不能运行 Xcode、iOS Simulator 或 xcodebuild。
+`scripts/prepare-rime-resources.sh` 下载固定版本并校验 SHA256，随后写入移动核心 schema。主 App 使用后台任务保护，在 App Group `group.com.example.PinyinKeyboard` 中以 staging 目录运行 RIME maintenance，验证 `build/default.yaml`、schema、prism 和 table 输出后原子发布包含资源版本、schema 和 schema 版本的完成标记。键盘扩展只读取完成标记和共享目录，不执行 maintenance、不复制词典；未部署时提示打开主 App。GitHub Actions 在生成 Xcode 工程前执行同一资源准备逻辑，并上传未签名 IPA。生成的 PinyinKeyboard.xcodeproj 不提交到当前工作区。Windows 环境不能运行 Xcode、iOS Simulator 或 xcodebuild。
 
 ## 隐私约束
 
-默认配置为 `RequestsOpenAccess=false`。键盘扩展不联网、不发送按键、不保存按键历史。主 App 只显示启用和状态信息。项目不包含 AI、剪贴板、云服务或 GuruIM 数据采集功能。
+键盘扩展配置为 `RequestsOpenAccess=true`。用户必须在系统键盘设置中开启完全访问，完全访问仅用于读取主 App 在 App Group 共享容器中部署的本地 RIME 资源、用户词典和完成标记。键盘扩展不联网、不发送按键、不保存按键历史。项目不包含 AI、剪贴板、云服务或 GuruIM 数据采集功能。
 
 ## 许可证和来源
 

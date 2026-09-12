@@ -49,6 +49,16 @@ typedef NS_ENUM(NSInteger, RimeKitKeyProcessingResult) {
                        available:(BOOL)available;
 @end
 
+/// Runs librime maintenance against already prepared data directories.
+/// The host application owns this operation. Keyboard extensions must only
+/// create sessions after the application publishes a completion marker.
+@interface RimeKitDeploymentController : NSObject
++ (BOOL)deployWithSharedDataPath:(NSString *)sharedDataPath
+                     userDataPath:(NSString *)userDataPath
+                         schemaID:(NSString *)schemaID
+                            error:(NSError * _Nullable * _Nullable)error;
+@end
+
 /// Minimal public RIME session boundary. The class owns only librime state.
 /// Resource installation and keyboard proxy writes stay outside this bridge.
 @interface RimeKitSession : NSObject

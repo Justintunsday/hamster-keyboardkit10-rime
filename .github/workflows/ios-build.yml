@@ -51,6 +51,27 @@ jobs:
             exit 1
           fi
 
+      - name: Verify App Group deployment boundary
+        run: |
+          set -euo pipefail
+          group='group.com.example.PinyinKeyboard'
+          grep -Fq "$group" App/PinyinKeyboard.entitlements
+          grep -Fq "$group" KeyboardExtension/PinyinKeyboardExtension.entitlements
+          test "$(plutil -extract NSExtension.NSExtensionAttributes.RequestsOpenAccess raw -o - KeyboardExtension/Info.plist)" = 'true'
+          grep -Fq 'CODE_SIGN_ENTITLEMENTS: App/PinyinKeyboard.entitlements' project.yml
+          grep -Fq 'CODE_SIGN_ENTITLEMENTS: KeyboardExtension/PinyinKeyboardExtension.entitlements' project.yml
+          grep -Fq 'RimeDeploymentCoordinator' App/RimeDeploymentViewModel.swift
+          grep -Fq 'RimeKitDeploymentController' PinyinCore/Sources/PinyinCore/RimeDeploymentCoordinator.swift
+          if rg -n 'start_maintenance|join_maintenance_thread|deploy_workspace|RimeKitDeploymentController|validatedBundledResourceRoot|copyItem|Resources/Rime' KeyboardExtension; then
+            echo 'Keyboard extension contains RIME deployment or resource-copy code' >&2
+            exit 1
+          fi
+          grep -Fq 'makeSharedContainerSession' KeyboardExtension/KeyboardSession.swift
+          if rg -n 'makeBundledSession|RimeResourceInstaller\.prepare' KeyboardExtension PinyinCore/Sources/PinyinCore; then
+            echo 'Legacy extension-side RIME installer path remains' >&2
+            exit 1
+          fi
+
       - name: Cache SwiftPM artifacts
         uses: actions/cache@v4
         with:

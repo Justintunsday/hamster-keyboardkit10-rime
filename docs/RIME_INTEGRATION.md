@@ -11,12 +11,13 @@
 
 ## 会话边界
 
-1. `RimeResourceInstaller` 从 Swift package resource bundle 复制 `default.yaml`、schema、词典、Lua 和 OpenCC 资源到键盘扩展 Application Support。
-2. `RimeKitSession` 调用 `rime_get_api()`，执行 `setup`、`initialize`、必要时 `deployer_initialize/deploy`、`create_session` 和 `select_schema`。
-3. `RimeKitBridge` 将 `RimeContext`、`RimeCommit` 和 `RimeStatus` 深拷贝成 Objective-C snapshot，随后由 `RimeKitSessionDriver` 转换为 `RimeSnapshot`。
+1. 主 App 的 `RimeDeploymentCoordinator` 从 Swift package resource bundle 复制 `default.yaml`、移动版 schema、雾凇全拼词典和 OpenCC 资源到 App Group staging 目录，复制已有用户数据，运行 maintenance，验证 build 输出后发布原子完成标记。
+2. `RimeKitDeploymentController` 只由主 App 调用 `setup`、`initialize`、`start_maintenance` 和 `join_maintenance_thread`。键盘扩展禁止调用这些部署接口。
+3. `RimeKitSession` 只读取主 App 发布的共享目录，调用 `setup`、`initialize`、`create_session` 和 `select_schema`，不会执行部署。
+4. `RimeKitBridge` 将 `RimeContext`、`RimeCommit` 和 `RimeStatus` 深拷贝成 Objective-C snapshot，随后由 `RimeKitSessionDriver` 转换为 `RimeSnapshot`。
 4. `PinyinInputStateMachine` 将字母、退格、空格、回车、候选点击和标点映射为 RIME key event，并把 commit delta 写入 `UITextDocumentProxy`。
 
-所有中文候选由 librime `process_key`、`get_context`、`select_candidate_on_current_page`、`commit_composition` 和 `get_commit` 产生。RIME user data 位于扩展 Application Support，session 使用同一 user data 目录，用户词频由 RIME translator/user database 持久化。
+所有中文候选由 librime `process_key`、`get_context`、`select_candidate_on_current_page`、`commit_composition` 和 `get_commit` 产生。RIME user data 位于 App Group 共享容器，session 使用完成标记指定的 user data 目录，用户词频由 RIME translator/user database 持久化。主 App 使用文件锁、隔离 staging 目录和原子标记，扩展不读取未完成目录。
 5. 停止时销毁 `RimeSessionId`。宿主文本框写入只经过 `TextDocumentProxyAdapter`。
 
 ## 错误处理
@@ -29,7 +30,7 @@
 
     bash scripts/prepare-rime-resources.sh
 
-脚本完成固定版本下载、SHA256 校验和 Swift package resource 目录准备。CI 在 `xcodegen generate` 前执行该步骤，因此 IPA 包含实际 RIME 资源。运行时资源复制到可写目录，不修改 bundle。
+脚本完成固定版本下载、SHA256 校验和 Swift package resource 目录准备。CI 在 `xcodegen generate` 前执行该步骤，因此 IPA 包含实际 RIME 资源。主 App 将资源复制到 App Group 可写目录，不修改 bundle。键盘扩展不复制资源，只读取已发布目录。
 
 ## 未验证项
 

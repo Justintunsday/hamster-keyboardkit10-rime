@@ -247,9 +247,15 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
     }
 
     BOOL started = api->start_maintenance(true);
-    if (started || api->is_maintenance_mode()) {
-        api->join_maintenance_thread();
+    if (!started && !api->is_maintenance_mode()) {
+        if (error != NULL) {
+            *error = [NSError errorWithDomain:RimeKitErrorDomain
+                                          code:RimeKitErrorDeploymentFailed
+                                      userInfo:@{NSLocalizedDescriptionKey: @"RIME maintenance start failed"}];
+        }
+        return NO;
     }
+    api->join_maintenance_thread();
     if (api->is_maintenance_mode()) {
         if (error != NULL) {
             *error = [NSError errorWithDomain:RimeKitErrorDomain
@@ -289,6 +295,104 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
     }
     return YES;
 }
+
+static BOOL RimeKitValidateDeploymentSchema(RimeApi_stdbool *api,
+                                            NSString *schemaID,
+                                            NSError **error) {
+    if (api == NULL || api->create_session == NULL || api->destroy_session == NULL
+        || api->select_schema == NULL || api->get_status == NULL || api->free_status == NULL) {
+        if (error != NULL) {
+            *error = [NSError errorWithDomain:RimeKitErrorDomain
+                                          code:RimeKitErrorDeploymentFailed
+                                      userInfo:@{NSLocalizedDescriptionKey: @"RIME schema validation API is unavailable"}];
+        }
+        return NO;
+    }
+
+    RimeSessionId sessionID = api->create_session();
+    if (sessionID == 0 || !api->select_schema(sessionID, schemaID.UTF8String)) {
+        if (sessionID != 0) {
+            api->destroy_session(sessionID);
+        }
+        if (error != NULL) {
+            *error = [NSError errorWithDomain:RimeKitErrorDomain
+                                          code:RimeKitErrorDeploymentFailed
+                                      userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:
+                                          @"RIME deployment schema selection failed: %@", schemaID]}];
+        }
+        return NO;
+    }
+
+    RimeStatus_stdbool status;
+    memset(&status, 0, sizeof(status));
+    RIME_STRUCT_INIT(RimeStatus_stdbool, status);
+    BOOL statusRead = api->get_status(sessionID, &status);
+    NSString *reportedSchema = statusRead ? RimeKitString(status.schema_id) : @"";
+    if (statusRead) {
+        api->free_status(&status);
+    }
+    api->destroy_session(sessionID);
+    if (!statusRead || ![reportedSchema isEqualToString:schemaID]) {
+        if (error != NULL) {
+            *error = [NSError errorWithDomain:RimeKitErrorDomain
+                                          code:RimeKitErrorDeploymentFailed
+                                      userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:
+                                          @"RIME deployment schema mismatch: requested=%@ reported=%@",
+                                          schemaID, reportedSchema]}];
+        }
+        return NO;
+    }
+    return YES;
+}
+
+@implementation RimeKitDeploymentController
+
++ (BOOL)deployWithSharedDataPath:(NSString *)sharedDataPath
+                     userDataPath:(NSString *)userDataPath
+                         schemaID:(NSString *)schemaID
+                            error:(NSError **)error {
+    @synchronized (RimeKitGlobalLock()) {
+        if (!RimeKitIsDirectory(sharedDataPath) || !RimeKitIsDirectory(userDataPath)) {
+            if (error != NULL) {
+                *error = [NSError errorWithDomain:RimeKitErrorDomain
+                                              code:RimeKitErrorInvalidConfiguration
+                                          userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithFormat:
+                                              @"RIME deployment directories are unavailable (shared=%@, user=%@)",
+                                              sharedDataPath, userDataPath]}];
+            }
+            return NO;
+        }
+
+        RimeApi_stdbool *api = RimeKitAPI();
+        if (!RimeKitSetup(api, sharedDataPath, userDataPath, error)) {
+            return NO;
+        }
+        if (!RimeKitValidateAPI(api, error)) {
+            return NO;
+        }
+        if (api->initialize == NULL || !api->initialize(NULL)) {
+            if (error != NULL) {
+                *error = [NSError errorWithDomain:RimeKitErrorDomain
+                                              code:RimeKitErrorSetupFailed
+                                          userInfo:@{NSLocalizedDescriptionKey: @"RIME initialize failed before maintenance"}];
+            }
+            return NO;
+        }
+
+        NSString *deploymentStatus = nil;
+        if (!RimeKitEnsureDeployment(api,
+                                     sharedDataPath,
+                                     userDataPath,
+                                     schemaID,
+                                     &deploymentStatus,
+                                     error)) {
+            return NO;
+        }
+        return RimeKitValidateDeploymentSchema(api, schemaID, error);
+    }
+}
+
+@end
 
 @implementation RimeKitSession
 
@@ -366,21 +470,16 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
                     : @"RIME API capability validation failed"];
                 return NO;
             }
-            api->initialize(NULL);
-            _deploymentStatus = @"deploying";
-            NSString *deploymentStatus = nil;
-            if (!RimeKitEnsureDeployment(api,
-                                         _sharedDataPath,
-                                         _userDataPath,
-                                         _schemaID,
-                                         &deploymentStatus,
-                                         error)) {
-                [self recordDeploymentErrorMessage:error != NULL && *error != nil
-                    ? (*error).localizedDescription
-                    : @"RIME resource deployment failed"];
+            if (api->initialize == NULL || !api->initialize(NULL)) {
+                [self recordDeploymentErrorMessage:@"RIME initialize failed for prepared data"];
+                if (error != NULL) {
+                    *error = [NSError errorWithDomain:RimeKitErrorDomain
+                                                  code:RimeKitErrorSetupFailed
+                                              userInfo:@{NSLocalizedDescriptionKey: @"RIME initialize failed for prepared data"}];
+                }
                 return NO;
             }
-            _deploymentStatus = deploymentStatus ?: @"deployed";
+            _deploymentStatus = @"prepared";
             _sessionID = api->create_session();
         }
 
