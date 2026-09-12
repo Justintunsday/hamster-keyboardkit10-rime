@@ -424,9 +424,9 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
     BOOL hasNextPage = NO;
     BOOL composing = rawInput.length > 0;
 
-    RimeContext context;
+    RimeContext_stdbool context;
     memset(&context, 0, sizeof(context));
-    RIME_STRUCT_INIT(RimeContext, context);
+    RIME_STRUCT_INIT(RimeContext_stdbool, context);
     if (api->get_context != NULL && api->get_context(_sessionID, &context)) {
         preedit = RimeKitString(context.composition.preedit);
         pageIndex = context.menu.page_no;
@@ -448,9 +448,9 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
         }
     }
 
-    RimeStatus status;
+    RimeStatus_stdbool status;
     memset(&status, 0, sizeof(status));
-    RIME_STRUCT_INIT(RimeStatus, status);
+    RIME_STRUCT_INIT(RimeStatus_stdbool, status);
     if (api->get_status != NULL && api->get_status(_sessionID, &status)) {
         NSString *reportedSchema = RimeKitString(status.schema_id);
         if (reportedSchema.length > 0) {
