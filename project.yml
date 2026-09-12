@@ -60,7 +60,7 @@ targets:
         product: PinyinCore
       - package: KeyboardKit
         product: KeyboardKit
-        link: false
+        link: true
         embed: false
 
   PinyinCoreTests:
