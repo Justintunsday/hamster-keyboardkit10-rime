@@ -1,0 +1,75 @@
+name: PinyinKeyboard
+
+options:
+  minimumXcodeGenVersion: 2.38.0
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+
+packages:
+  KeyboardKit:
+    url: https://github.com/KeyboardKit/KeyboardKit.git
+    exactVersion: 10.9.4
+  PinyinCore:
+    path: PinyinCore
+
+targets:
+  PinyinKeyboard:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.PinyinKeyboard
+        INFOPLIST_FILE: App/Info.plist
+        TARGETED_DEVICE_FAMILY: "1,2"
+    dependencies:
+      - target: PinyinKeyboardExtension
+        embed: true
+      - package: KeyboardKit
+        product: KeyboardKit
+        link: true
+        embed: true
+
+  PinyinKeyboardExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: KeyboardExtension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.PinyinKeyboard.KeyboardExtension
+        INFOPLIST_FILE: KeyboardExtension/Info.plist
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+        PINYIN_ENABLE_RIME: 0
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/Frameworks"
+          - "@executable_path/../../Frameworks"
+    dependencies:
+      - package: PinyinCore
+        product: PinyinCore
+      - package: KeyboardKit
+        product: KeyboardKit
+        link: false
+        embed: false
+
+  PinyinCoreTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: PinyinCore/Tests/PinyinCoreTests
+    dependencies:
+      - package: PinyinCore
+        product: PinyinCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.PinyinKeyboard.PinyinCoreTests
+        GENERATE_INFOPLIST_FILE: YES

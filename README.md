@@ -1,73 +1,46 @@
-# 「仓」输入法
+# Pinyin Keyboard
 
-一款基于「[中州韻輸入法引擎／Rime Input Method Engine](https://github.com/rime/librime)」的 iOS 版本输入法.
+从零实现的 iOS 16+ 简体中文 26 键拼音输入法最小工程。
 
-# License
+## 范围
 
-本项目最初采用 GPL-3.0 许可。从 v2.1.0 开始，它变更为 MIT 许可。
+- 26 键 QWERTY 拼音输入。
+- 中文、英文、数字、符号模式。
+- 拼音组合文本、候选词栏、候选选择、横向滚动。
+- 首选候选空格上屏。
+- 数字选词可由数字键或点击候选完成。
+- 退格优先删除组合串，组合为空后删除正文。
+- 回车提交未匹配的原始拼音。
+- Shift、Caps Lock、空格、回车、地球键、模式切换。
+- 中文标点映射。
+- 本地小型词表。词表不代表生产级覆盖率，不声称达到搜狗或百度的专有排序质量。
 
-后续代码是否会在开源？
+## 架构
 
-目前「仓」已经在做商业化的相关功能了，在没有资金的情况下，不打算在开源了。
+- PinyinCore：Swift Package。实现状态机、独立 LocalPinyinEngine、候选模型和 Rime 适配边界。
+- KeyboardExtension：UITextDocumentProxy 适配、KeyboardKit action handler、候选栏和标准键盘视图。
+- App：启用步骤、隐私说明、离线状态和设置入口。
+- project.yml：XcodeGen 工程描述。
 
-感谢大家的支持。
+KeyboardKit 固定为 10.9.4。只使用公开 KeyboardInputViewController、KeyboardView、标准 action handler、标准 layout/styling API。不复制 KeyboardKit 源码，不使用 Pro 功能。
 
-# 如何编译运行
+## 构建
 
-在 1.0 版本，很多伙伴 `clone` 项目后都无法直接运行，多数问题是被被卡在 `librime` 的编译下了，于是新版本将这步省略了。
+构建需要 macOS、Xcode 15 或更高版本、Swift 5.9 和 XcodeGen。
 
-目前 [LibrimeKit v0.1.0](https://github.com/amorphobia/LibrimeKit/releases/tag/v0.1.0) 项目，只用来作为 [librime](https://github.com/rime/librime)  的编译项目，并使用 `Github Action` 将依赖的 Framework 编译并发布 Release。大家可以下载编译好的 Framework 使用，无需在为了编译环境而困扰。
+    brew install xcodegen
+    xcodegen generate
+    xcodebuild -resolvePackageDependencies -project PinyinKeyboard.xcodeproj
+    xcodebuild -scheme PinyinKeyboard -sdk iphonesimulator -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 16' build
+    cd PinyinCore
+    swift test
 
-> 感谢 @amorphobia 为 LibrimeKit 提交的 Github Action 配置
+生成的 PinyinKeyboard.xcodeproj 不提交到当前工作区。Windows 环境不能运行 Xcode、iOS Simulator 或 xcodebuild。在 macOS 上执行 xcodegen generate 后再构建。
 
-1. 下载编译后的 Framework
+## 隐私约束
 
-```sh
-make framework
-```
+默认配置为 RequestsOpenAccess=false。键盘扩展不联网、不发送按键、不保存按键历史。主 App 只显示启用和状态信息。
 
-2. 下载内置方案
+## 许可证和来源
 
-```sh
-make schema
-```
-
-3. XCode 打开项目并运行（我个人使用的开发环境 Intel X86，MacOS 14，XCode 15）
-
-```sh
-xed .
-```
-
-# 第三方库
-
-仓输入法的功能的开发离不开这些开源项目：
-
-* [librime](https://github.com/rime/librime) (BSD License)
-* [KeyboardKit](https://github.com/KeyboardKit/KeyboardKit.git) (MIT License)
-* [Squirrel](https://github.com/rime/squirrel) (GPL-3.0 license)
-* [Runestone](https://github.com/simonbs/Runestone.git) (MIT License)
-* [TreeSitterLanguages](https://github.com/simonbs/TreeSitterLanguages.git) (MIT License)
-* [ProgressHUD](https://github.com/relatedcode/ProgressHUD) (MIT License)
-* [ZIPFoundation](https://github.com/weichsel/ZIPFoundation) (MIT License)
-* [Yams](https://github.com/jpsim/Yams) (MIT License)
-* [GCDWebServer](https://github.com/swisspol/GCDWebServer)
-
-# 致谢
-
-感谢 TF 版本交流群中的 @一梦浮生，@CZ36P9z9 等等伙伴对测试版本的反馈与帮助，也感谢 @王牌饼干 为输入法制作的工具。
-
-# 捐赠
-
-如果「仓」对您有帮助，可以请我吃份「煎饼馃子」，感激不尽~
-
-> 注意：不接收有偿咨询服务，请勿因此打赏，谢谢。
-
-<img src="https://ihsiao.com/aliPay.jpeg" width="207" height="281" />
-<img src="https://ihsiao.com/wechatPay.jpeg"  width="207" height="281" />
-
-
-### AppStore
-
-<a href="https://apps.apple.com/cn/app/%E4%BB%93%E8%BE%93%E5%85%A5%E6%B3%95/id6446617683?itscg=30200&amp;itsct=apps_box_appicon" style="width: 170px; height: 170px; border-radius: 22%; overflow: hidden; display: inline-block; vertical-align: middle;"><img src="https://is4-ssl.mzstatic.com/image/thumb/Purple126/v4/16/b3/b8/16b3b836-12aa-206a-f849-79e37bf6528c/AppIcon-0-1x_U007emarketing-0-10-0-85-220.png/540x540bb.jpg" alt="仓输入法" style="width: 170px; height: 170px; border-radius: 22%; overflow: hidden; display: inline-block; vertical-align: middle;"></a>
-
-<a href="https://apps.apple.com/cn/app/%E4%BB%93%E8%BE%93%E5%85%A5%E6%B3%95/id6446617683?itsct=apps_box_badge&amp;itscg=30200" style="display: inline-block; overflow: hidden; border-radius: 13px; width: 250px; height: 83px;"><img src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?size=250x83&amp;releaseDate=1680912000" alt="Download on the App Store" style="border-radius: 13px; width: 250px; height: 83px;"></a>
+原始代码使用 MIT 许可证，见 LICENSE。KeyboardKit、LicenseKit 和未来可选的 Rime 组件保留各自许可证，见 THIRD_PARTY_NOTICES.md。本实现的内置小型词表由本项目手工编写，不复制专有词库、模型或资源。

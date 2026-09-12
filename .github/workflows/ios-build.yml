@@ -1,0 +1,38 @@
+name: ios-build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Cache SwiftPM artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build
+            PinyinCore/.build
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-swiftpm-${{ hashFiles('Package.swift', 'PinyinCore/Package.swift', 'project.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-swiftpm-
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Run PinyinCore tests
+        working-directory: PinyinCore
+        run: swift test
+
+      - name: Build iOS Simulator without signing
+        run: xcodebuild -project PinyinKeyboard.xcodeproj -scheme PinyinKeyboard -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build
