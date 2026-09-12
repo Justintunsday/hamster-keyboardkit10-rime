@@ -314,9 +314,10 @@ public final class RimeKitSessionDriver: RimeSessionDriver, @unchecked Sendable 
     }
 
     public func start() throws -> RimeSnapshot {
-        var error: NSError?
-        guard nativeSession.start(&error) else {
-            throw RimeEngineError.native(error?.localizedDescription ?? "RIME start failed")
+        do {
+            try nativeSession.start()
+        } catch {
+            throw RimeEngineError.native(error.localizedDescription)
         }
         return snapshot(from: nativeSession.currentSnapshot())
     }
