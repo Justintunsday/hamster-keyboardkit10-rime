@@ -4,7 +4,7 @@ import PinyinCore
 final class PinyinActionHandler: KeyboardAction.StandardActionHandler {
     private let session: KeyboardSession
     private let applyTransition: (PinyinTransition) -> Void
-    private weak var keyboardController: KeyboardInputViewController?
+    private weak var hostController: KeyboardInputViewController?
     private var lastKeyboardType: Keyboard.KeyboardType
 
     init(
@@ -14,7 +14,7 @@ final class PinyinActionHandler: KeyboardAction.StandardActionHandler {
     ) {
         self.session = session
         self.applyTransition = applyTransition
-        self.keyboardController = controller
+        self.hostController = controller
         self.lastKeyboardType = controller.state.keyboardContext.keyboardType
         super.init(controller: controller)
     }
@@ -55,7 +55,7 @@ final class PinyinActionHandler: KeyboardAction.StandardActionHandler {
             guard gesture == .release else {
                 return
             }
-            keyboardController?.advanceToNextInputMode()
+            hostController?.advanceToNextInputMode()
 
         default:
             super.handle(gesture, on: action)
@@ -66,11 +66,11 @@ final class PinyinActionHandler: KeyboardAction.StandardActionHandler {
 
     private func synchronizeSessionModeIfNeeded(for gesture: Keyboard.Gesture) {
         guard gesture == .release,
-              let keyboardController else {
+              let hostController else {
             return
         }
 
-        let currentKeyboardType = keyboardController.state.keyboardContext.keyboardType
+        let currentKeyboardType = hostController.state.keyboardContext.keyboardType
         defer {
             lastKeyboardType = currentKeyboardType
         }
