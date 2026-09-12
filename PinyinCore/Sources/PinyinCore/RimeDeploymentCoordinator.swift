@@ -117,17 +117,18 @@ public struct RimeDeploymentCoordinator: Sendable {
             }
 
             try RimeResourceInstaller.writeManagedUserConfiguration(to: stagedUser)
-            var nativeError: NSError?
-            let deployed = RimeKitDeploymentController.deploy(
-                withSharedDataPath: stagedShared.path,
-                userDataPath: stagedUser.path,
-                schemaID: Self.schemaID,
-                error: &nativeError
-            )
-            guard deployed else {
-                throw RimeDeploymentError.native(
-                    nativeError?.localizedDescription ?? "RIME maintenance/deploy failed"
+            let deployed: Bool
+            do {
+                deployed = try RimeKitDeploymentController.deploy(
+                    withSharedDataPath: stagedShared.path,
+                    userDataPath: stagedUser.path,
+                    schemaID: Self.schemaID
                 )
+            } catch {
+                throw RimeDeploymentError.native(error.localizedDescription)
+            }
+            guard deployed else {
+                throw RimeDeploymentError.native("RIME maintenance/deploy failed")
             }
             try RimeResourceInstaller.validateDeploymentOutputs(
                 sharedDataPath: stagedShared,
