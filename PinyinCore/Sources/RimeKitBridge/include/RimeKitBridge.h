@@ -2,6 +2,13 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+typedef NS_ENUM(NSInteger, RimeKitKeyProcessingResult) {
+    RimeKitKeyProcessingResultNone = 0,
+    RimeKitKeyProcessingResultHandled = 1,
+    RimeKitKeyProcessingResultUnhandled = 2,
+    RimeKitKeyProcessingResultNativeError = 3
+};
+
 @interface RimeKitCandidate : NSObject
 @property(nonatomic, copy, readonly) NSString *text;
 @property(nonatomic, copy, readonly) NSString *annotation;
@@ -57,6 +64,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, assign, readonly) BOOL available;
 @property(nonatomic, copy, readonly, nullable) NSString *lastErrorMessage;
+@property(nonatomic, assign, readonly) RimeKitKeyProcessingResult lastKeyProcessingResult;
 @end
 
 NS_ASSUME_NONNULL_END

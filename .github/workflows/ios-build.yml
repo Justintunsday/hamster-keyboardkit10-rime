@@ -26,6 +26,25 @@ jobs:
           sudo xcode-select --switch /Applications/Xcode_26.3.app
           xcodebuild -version
 
+      - name: Verify RIME key routing
+        run: |
+          set -euo pipefail
+          bridge="PinyinCore/Sources/RimeKitBridge/RimeKitBridge.m"
+          grep -Fq 'RimeKitKeyProcessingResultHandled' "$bridge"
+          grep -Fq 'RimeKitKeyProcessingResultUnhandled' "$bridge"
+          grep -Fq 'RimeKitKeyProcessingResultNativeError' "$bridge"
+          grep -Fq '[self processKeyCode:0xFF08]' "$bridge"
+          grep -Fq '[self processKeyCode:0xFF0D]' "$bridge"
+          grep -Fq '[self processKeyCode:0x20]' "$bridge"
+          if grep -Fq '[self processKeyCode:0x08]' "$bridge"; then
+            echo 'ASCII backspace keycode remains in RIME bridge' >&2
+            exit 1
+          fi
+          if grep -Fq '[self processKeyCode:0x0d]' "$bridge"; then
+            echo 'ASCII return keycode remains in RIME bridge' >&2
+            exit 1
+          fi
+
       - name: Cache SwiftPM artifacts
         uses: actions/cache@v4
         with:

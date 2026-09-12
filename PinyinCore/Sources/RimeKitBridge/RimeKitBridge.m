@@ -113,8 +113,9 @@ static NSString *RimeKitString(const char *value) {
     RimeSessionId _sessionID;
     RimeKitSnapshot *_currentSnapshot;
     NSString *_lastErrorMessage;
+    RimeKitKeyProcessingResult _lastKeyProcessingResult;
 }
-- (BOOL)processKeyCode:(int)keyCode;
+- (RimeKitKeyProcessingResult)processKeyCode:(int)keyCode;
 - (void)recordErrorMessage:(NSString *)message;
 - (void)clearErrorMessage;
 - (NSString * _Nullable)consumeCommitWithAPI:(RimeApi_stdbool *)api;
@@ -199,6 +200,12 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
 
 @synthesize lastErrorMessage = _lastErrorMessage;
 
+- (RimeKitKeyProcessingResult)lastKeyProcessingResult {
+    @synchronized (self) {
+        return _lastKeyProcessingResult;
+    }
+}
+
 - (instancetype)initWithSharedDataPath:(NSString *)sharedDataPath
                            userDataPath:(NSString *)userDataPath
                               schemaID:(NSString *)schemaID {
@@ -209,6 +216,7 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
         _schemaID = [schemaID copy];
         _sessionID = 0;
         _lastErrorMessage = nil;
+        _lastKeyProcessingResult = RimeKitKeyProcessingResultNone;
         _currentSnapshot = [[RimeKitSnapshot alloc] initWithPreedit:@""
                                                              rawInput:@""
                                                        committedText:nil
@@ -227,6 +235,7 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
 - (BOOL)start:(NSError **)error {
     @synchronized (self) {
         [self clearErrorMessage];
+        _lastKeyProcessingResult = RimeKitKeyProcessingResultNone;
         if (_sessionID != 0) {
             return YES;
         }
@@ -281,6 +290,7 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
             if (!api->select_schema(_sessionID, _schemaID.UTF8String)) {
                 api->destroy_session(_sessionID);
                 _sessionID = 0;
+                _lastKeyProcessingResult = RimeKitKeyProcessingResultNone;
                 [self recordErrorMessage:@"RIME schema selection failed"];
                 if (error != NULL) {
                     *error = [NSError errorWithDomain:RimeKitErrorDomain
@@ -314,6 +324,7 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
             _sessionID = 0;
         }
         [self clearErrorMessage];
+        _lastKeyProcessingResult = RimeKitKeyProcessingResultNone;
         _currentSnapshot = [[RimeKitSnapshot alloc] initWithPreedit:@""
                                                              rawInput:@""
                                                        committedText:nil
@@ -343,6 +354,7 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
 - (RimeKitSnapshot *)reset {
     @synchronized (self) {
         [self clearErrorMessage];
+        _lastKeyProcessingResult = RimeKitKeyProcessingResultNone;
         RimeApi_stdbool *api = RimeKitAPI();
         if (_sessionID == 0) {
             [self recordErrorMessage:@"RIME session is not started"];
@@ -367,37 +379,37 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
             return _currentSnapshot;
         }
         for (NSUInteger index = 0; index < text.length; index++) {
-            if (![self processKeyCode:(int)[text characterAtIndex:index]]) {
-                break;
-            }
+            [self processKeyCode:(int)[text characterAtIndex:index]];
         }
         return _currentSnapshot;
     }
 }
 
-- (BOOL)processKeyCode:(int)keyCode {
+- (RimeKitKeyProcessingResult)processKeyCode:(int)keyCode {
     [self clearErrorMessage];
     RimeApi_stdbool *api = RimeKitAPI();
     if (_sessionID == 0) {
         [self recordErrorMessage:@"RIME session is not started"];
-        return NO;
+        _lastKeyProcessingResult = RimeKitKeyProcessingResultNativeError;
+        return _lastKeyProcessingResult;
     }
     if (api == NULL || api->process_key == NULL) {
         [self recordErrorMessage:@"RIME process_key API is unavailable"];
-        return NO;
+        _lastKeyProcessingResult = RimeKitKeyProcessingResultNativeError;
+        return _lastKeyProcessingResult;
     }
     BOOL handled = api->process_key(_sessionID, keyCode, 0);
     NSString *commit = [self consumeCommitWithAPI:api];
     _currentSnapshot = [self snapshotWithCommittedText:commit];
-    if (!handled) {
-        [self recordErrorMessage:[NSString stringWithFormat:@"RIME rejected key code %d", keyCode]];
-    }
-    return handled;
+    _lastKeyProcessingResult = handled
+        ? RimeKitKeyProcessingResultHandled
+        : RimeKitKeyProcessingResultUnhandled;
+    return _lastKeyProcessingResult;
 }
 
 - (RimeKitSnapshot *)processBackspace {
     @synchronized (self) {
-        [self processKeyCode:0x08];
+        [self processKeyCode:0xFF08];
         return _currentSnapshot;
     }
 }
@@ -411,7 +423,7 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
 
 - (RimeKitSnapshot *)processReturn {
     @synchronized (self) {
-        [self processKeyCode:0x0d];
+        [self processKeyCode:0xFF0D];
         return _currentSnapshot;
     }
 }
