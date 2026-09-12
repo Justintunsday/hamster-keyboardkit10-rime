@@ -14,6 +14,7 @@
 - Shift、Caps Lock、空格、回车、地球键、模式切换。
 - 中文标点映射。
 - RIME 默认方案：librime `RimeStatic 1.16.1-pack.8` 与雾凇拼音 `2026.06.30`。
+- 固定静态包不含 Lua runtime。构建时使用 `scripts/rime_ice.mobile.schema.yaml` 作为移动核心 schema，保留雾凇全拼词典、OpenCC 简繁转换资源、用户词典和完整依赖文件；不启用 `lua_*` 组件。
 - LocalPinyinEngine 仅供显式测试或离线对照注入。生产默认路径不创建、不调用该实现。
 
 ## 架构
@@ -35,7 +36,7 @@ KeyboardKit 固定为 10.9.4。只使用公开 KeyboardInputViewController、Key
     xcodebuild -resolvePackageDependencies -project PinyinKeyboard.xcodeproj
     xcodebuild -project PinyinKeyboard.xcodeproj -scheme PinyinKeyboard -sdk iphoneos -configuration Release -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
 
-`scripts/prepare-rime-resources.sh` 下载固定版本并校验 SHA256。GitHub Actions 在生成 Xcode 工程前执行同一资源准备逻辑，并上传未签名 IPA。生成的 PinyinKeyboard.xcodeproj 不提交到当前工作区。Windows 环境不能运行 Xcode、iOS Simulator 或 xcodebuild。
+`scripts/prepare-rime-resources.sh` 下载固定版本并校验 SHA256，随后写入移动核心 schema。运行时等待 RIME maintenance 完成，检查 `build/default.yaml`、schema、prism 和 table 输出，并显示 deployment、schema、plugin、context 状态。GitHub Actions 在生成 Xcode 工程前执行同一资源准备逻辑，并上传未签名 IPA。生成的 PinyinKeyboard.xcodeproj 不提交到当前工作区。Windows 环境不能运行 Xcode、iOS Simulator 或 xcodebuild。
 
 ## 隐私约束
 

@@ -33,6 +33,12 @@ jobs:
           grep -Fq 'RimeKitKeyProcessingResultHandled' "$bridge"
           grep -Fq 'RimeKitKeyProcessingResultUnhandled' "$bridge"
           grep -Fq 'RimeKitKeyProcessingResultNativeError' "$bridge"
+          grep -Fq 'api->start_maintenance(true)' "$bridge"
+          grep -Fq 'api->join_maintenance_thread()' "$bridge"
+          grep -Fq 'RIME deployment output missing' "$bridge"
+          grep -Fq 'RIME schema selection failed' "$bridge"
+          grep -Fq 'RIME get_context failed' "$bridge"
+          grep -Fq 'candidate_list_begin' "$bridge"
           grep -Fq '[self processKeyCode:0xFF08]' "$bridge"
           grep -Fq '[self processKeyCode:0xFF0D]' "$bridge"
           grep -Fq '[self processKeyCode:0x20]' "$bridge"
@@ -67,9 +73,31 @@ jobs:
           rm -rf PinyinCore/Sources/PinyinCore/Resources/Rime
           mkdir -p PinyinCore/Sources/PinyinCore/Resources/Rime
           ditto -x -k "$RIME_ARCHIVE" PinyinCore/Sources/PinyinCore/Resources/Rime
+          cp scripts/rime_ice.mobile.schema.yaml PinyinCore/Sources/PinyinCore/Resources/Rime/rime_ice.schema.yaml
+          mkdir -p PinyinCore/Sources/PinyinCore/Resources/Rime/opencc
+          cp scripts/rime_ice.mobile.s2t.json PinyinCore/Sources/PinyinCore/Resources/Rime/opencc/s2t.json
+          curl --fail --location --retry 3 "https://raw.githubusercontent.com/ddddxxx/SwiftyOpenCC/1d8105a0f7199c90af722bff62728050c858e777/Sources/OpenCC/Dictionary/STCharacters.ocd2" --output PinyinCore/Sources/PinyinCore/Resources/Rime/opencc/STCharacters.ocd2
+          curl --fail --location --retry 3 "https://raw.githubusercontent.com/ddddxxx/SwiftyOpenCC/1d8105a0f7199c90af722bff62728050c858e777/Sources/OpenCC/Dictionary/STPhrases.ocd2" --output PinyinCore/Sources/PinyinCore/Resources/Rime/opencc/STPhrases.ocd2
+          echo 'AABED624D0576B8D6A8FF6C143FB37B432DD5A4FF421260172E691679FC43FE9  PinyinCore/Sources/PinyinCore/Resources/Rime/opencc/STCharacters.ocd2' | shasum --algorithm 256 --check --strict
+          echo '2E68E25F2385936970E2ABA9AC71A873BC9A3AB426E3A69251E3048C6A508141  PinyinCore/Sources/PinyinCore/Resources/Rime/opencc/STPhrases.ocd2' | shasum --algorithm 256 --check --strict
           test -f PinyinCore/Sources/PinyinCore/Resources/Rime/default.yaml
           test -f PinyinCore/Sources/PinyinCore/Resources/Rime/rime_ice.schema.yaml
           test -f PinyinCore/Sources/PinyinCore/Resources/Rime/rime_ice.dict.yaml
+          test -f PinyinCore/Sources/PinyinCore/Resources/Rime/cn_dicts/8105.dict.yaml
+          test -f PinyinCore/Sources/PinyinCore/Resources/Rime/cn_dicts/base.dict.yaml
+          test -f PinyinCore/Sources/PinyinCore/Resources/Rime/cn_dicts/ext.dict.yaml
+          test -f PinyinCore/Sources/PinyinCore/Resources/Rime/cn_dicts/tencent.dict.yaml
+          test -f PinyinCore/Sources/PinyinCore/Resources/Rime/cn_dicts/others.dict.yaml
+          test -f PinyinCore/Sources/PinyinCore/Resources/Rime/melt_eng.schema.yaml
+          test -f PinyinCore/Sources/PinyinCore/Resources/Rime/radical_pinyin.schema.yaml
+          test -f PinyinCore/Sources/PinyinCore/Resources/Rime/opencc/s2t.json
+          test -f PinyinCore/Sources/PinyinCore/Resources/Rime/opencc/STCharacters.ocd2
+          test -f PinyinCore/Sources/PinyinCore/Resources/Rime/opencc/STPhrases.ocd2
+          grep -Fq 'dictionary: rime_ice' PinyinCore/Sources/PinyinCore/Resources/Rime/rime_ice.schema.yaml
+          grep -Fq 'enable_user_dict: true' PinyinCore/Sources/PinyinCore/Resources/Rime/rime_ice.schema.yaml
+          grep -Fq 'simplifier@traditionalize' PinyinCore/Sources/PinyinCore/Resources/Rime/rime_ice.schema.yaml
+          grep -Fq 'opencc_config: s2t.json' PinyinCore/Sources/PinyinCore/Resources/Rime/rime_ice.schema.yaml
+          ! grep -Eq '^[[:space:]]*-[[:space:]]+lua_' PinyinCore/Sources/PinyinCore/Resources/Rime/rime_ice.schema.yaml
 
       - name: Generate Xcode project
         run: xcodegen generate

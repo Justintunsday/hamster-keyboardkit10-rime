@@ -57,6 +57,9 @@ public struct CompositionState: Equatable, Codable, Sendable {
     public var isShifted: Bool
     public var isCapsLocked: Bool
     public var runtimeStatus: PinyinRuntimeStatus
+    public var rimeDeploymentStatus: String
+    public var rimeSchemaID: String?
+    public var rimeSchemaSelected: Bool
 
     public init(
         mode: PinyinMode = .chinese,
@@ -64,7 +67,10 @@ public struct CompositionState: Equatable, Codable, Sendable {
         candidates: [PinyinCandidate] = [],
         isShifted: Bool = false,
         isCapsLocked: Bool = false,
-        runtimeStatus: PinyinRuntimeStatus = .local
+        runtimeStatus: PinyinRuntimeStatus = .local,
+        rimeDeploymentStatus: String = "unknown",
+        rimeSchemaID: String? = nil,
+        rimeSchemaSelected: Bool = false
     ) {
         self.mode = mode
         self.rawPinyin = rawPinyin
@@ -72,6 +78,9 @@ public struct CompositionState: Equatable, Codable, Sendable {
         self.isShifted = isShifted
         self.isCapsLocked = isCapsLocked
         self.runtimeStatus = runtimeStatus
+        self.rimeDeploymentStatus = rimeDeploymentStatus
+        self.rimeSchemaID = rimeSchemaID
+        self.rimeSchemaSelected = rimeSchemaSelected
     }
 
     public var isComposing: Bool {

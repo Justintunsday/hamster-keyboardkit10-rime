@@ -62,6 +62,15 @@ private struct CandidateToolbar: View {
                     .padding(.horizontal, 8)
             }
 
+            if case .rimeReady = state.runtimeStatus {
+                rimeStatusText
+            }
+
+            if case .rimeFailed = state.runtimeStatus {
+                rimeStatusText
+                    .foregroundStyle(.red)
+            }
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 4) {
                     if state.candidates.isEmpty {
@@ -88,5 +97,14 @@ private struct CandidateToolbar: View {
         }
         .padding(.vertical, 4)
         .background(.bar)
+    }
+
+    private var rimeStatusText: some View {
+        Text("RIME 部署：\(state.rimeDeploymentStatus)；方案：\(state.rimeSchemaID ?? "未知")；已选：\(state.rimeSchemaSelected ? "是" : "否")；候选：\(state.candidates.count)")
+            .font(.system(size: 10, design: .monospaced))
+            .foregroundStyle(.secondary)
+            .lineLimit(2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 8)
     }
 }

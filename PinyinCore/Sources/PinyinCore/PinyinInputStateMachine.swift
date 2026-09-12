@@ -31,6 +31,9 @@ public final class PinyinInputStateMachine {
             let message = rimeSession.lastError?.localizedDescription
                 ?? "RIME session is not started"
             self.state.runtimeStatus = .rimeFailed(message)
+            self.state.rimeDeploymentStatus = "failed"
+            self.state.rimeSchemaID = rimeSession.configuration.schemaID
+            self.state.rimeSchemaSelected = false
         }
     }
 
@@ -338,6 +341,9 @@ public final class PinyinInputStateMachine {
         state.runtimeStatus = .rimeReady
         state.rawPinyin = snapshot.rawInput.isEmpty ? snapshot.preedit : snapshot.rawInput
         state.candidates = snapshot.pinyinCandidates
+        state.rimeDeploymentStatus = snapshot.deploymentStatus
+        state.rimeSchemaID = snapshot.schemaID
+        state.rimeSchemaSelected = snapshot.schemaSelected
     }
 
     private func markRimeFailure(_ message: String) {

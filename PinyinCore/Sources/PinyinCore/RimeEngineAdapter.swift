@@ -121,6 +121,8 @@ public struct RimeSnapshot: Equatable, Sendable {
     public let pageSize: Int
     public let hasNextPage: Bool
     public let schemaID: String?
+    public let deploymentStatus: String
+    public let schemaSelected: Bool
 
     public var isComposing: Bool {
         !preedit.isEmpty || !rawInput.isEmpty
@@ -141,7 +143,9 @@ public struct RimeSnapshot: Equatable, Sendable {
         pageIndex: Int = 0,
         pageSize: Int = 0,
         hasNextPage: Bool = false,
-        schemaID: String? = nil
+        schemaID: String? = nil,
+        deploymentStatus: String = "unknown",
+        schemaSelected: Bool = false
     ) {
         self.preedit = preedit
         self.rawInput = rawInput
@@ -152,6 +156,8 @@ public struct RimeSnapshot: Equatable, Sendable {
         self.pageSize = max(0, pageSize)
         self.hasNextPage = hasNextPage
         self.schemaID = schemaID
+        self.deploymentStatus = deploymentStatus
+        self.schemaSelected = schemaSelected
     }
 
     public static let empty = RimeSnapshot()
@@ -295,6 +301,7 @@ public struct RimeResourcePaths: Equatable, Sendable {
 public enum RimeResourceError: Error, Equatable, Sendable {
     case bundleResourceMissing
     case requiredFileMissing(String)
+    case incompatibleSchema(String)
 }
 
 extension RimeResourceError: LocalizedError {
@@ -304,20 +311,40 @@ extension RimeResourceError: LocalizedError {
             return "Bundled RIME resource directory is missing"
         case .requiredFileMissing(let file):
             return "Required RIME resource is missing: \(file)"
+        case .incompatibleSchema(let message):
+            return message
         }
     }
 }
 
 public enum RimeResourceInstaller {
-    public static let resourceVersion = "rime-ice-2026.06.30"
+    public static let resourceVersion = "rime-ice-2026.06.30-opencc-1d8105a0"
+    public static let requiredResourceFiles = [
+        "default.yaml",
+        "rime_ice.schema.yaml",
+        "rime_ice.dict.yaml",
+        "cn_dicts/8105.dict.yaml",
+        "cn_dicts/base.dict.yaml",
+        "cn_dicts/ext.dict.yaml",
+        "cn_dicts/tencent.dict.yaml",
+        "cn_dicts/others.dict.yaml",
+        "melt_eng.schema.yaml",
+        "melt_eng.dict.yaml",
+        "radical_pinyin.schema.yaml",
+        "radical_pinyin.dict.yaml",
+        "opencc/emoji.json",
+        "opencc/s2t.json",
+        "opencc/STCharacters.ocd2",
+        "opencc/STPhrases.ocd2"
+    ]
 
     public static var hasBundledResources: Bool {
         guard let root = bundledResourceURL(bundle: .module) else {
             return false
         }
-        let fileManager = FileManager.default
-        return ["default.yaml", "rime_ice.schema.yaml", "rime_ice.dict.yaml"]
-            .allSatisfy { fileManager.fileExists(atPath: root.appendingPathComponent($0).path) }
+        return requiredResourceFiles.allSatisfy {
+            FileManager.default.fileExists(atPath: root.appendingPathComponent($0).path)
+        }
     }
 
     public static func prepare(
@@ -329,9 +356,21 @@ public enum RimeResourceInstaller {
         }
 
         let fileManager = FileManager.default
-        for file in ["default.yaml", "rime_ice.schema.yaml", "rime_ice.dict.yaml"]
+        for file in requiredResourceFiles
             where !fileManager.fileExists(atPath: source.appendingPathComponent(file).path) {
             throw RimeResourceError.requiredFileMissing(file)
+        }
+
+        let schemaURL = source.appendingPathComponent("rime_ice.schema.yaml")
+        let schemaText = try String(contentsOf: schemaURL, encoding: .utf8)
+        let containsUnsupportedLuaComponent = schemaText.split(separator: "\n").contains { line in
+            let trimmed = String(line).trimmingCharacters(in: .whitespaces)
+            return trimmed.hasPrefix("- lua_")
+        }
+        if containsUnsupportedLuaComponent {
+            throw RimeResourceError.incompatibleSchema(
+                "Bundled rime_ice schema requires Lua, unavailable in RimeStatic 1.16.1-pack.8"
+            )
         }
 
         let baseURL = (fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
@@ -345,16 +384,23 @@ public enum RimeResourceInstaller {
         let markerURL = sharedURL.appendingPathComponent(".pinyin-keyboard-resource-version")
         let userMarkerURL = userURL.appendingPathComponent(".pinyin-keyboard-resource-version")
         let installedVersion = try? String(contentsOf: markerURL, encoding: .utf8)
-        if installedVersion?.trimmingCharacters(in: .whitespacesAndNewlines) != resourceVersion {
+        let sharedResourcesComplete = requiredResourceFiles.allSatisfy {
+            fileManager.fileExists(atPath: sharedURL.appendingPathComponent($0).path)
+        }
+        var sharedWasRefreshed = false
+        if installedVersion?.trimmingCharacters(in: .whitespacesAndNewlines) != resourceVersion
+            || !sharedResourcesComplete {
             if fileManager.fileExists(atPath: sharedURL.path) {
                 try fileManager.removeItem(at: sharedURL)
             }
             try fileManager.copyItem(at: source, to: sharedURL)
             try resourceVersion.write(to: markerURL, atomically: true, encoding: .utf8)
+            sharedWasRefreshed = true
         }
 
         let installedUserVersion = try? String(contentsOf: userMarkerURL, encoding: .utf8)
-        if installedUserVersion?.trimmingCharacters(in: .whitespacesAndNewlines) != resourceVersion {
+        if installedUserVersion?.trimmingCharacters(in: .whitespacesAndNewlines) != resourceVersion
+            || sharedWasRefreshed {
             let buildURL = userURL.appendingPathComponent("build", isDirectory: true)
             if fileManager.fileExists(atPath: buildURL.path) {
                 try fileManager.removeItem(at: buildURL)
@@ -363,13 +409,16 @@ public enum RimeResourceInstaller {
         }
 
         let customDefault = userURL.appendingPathComponent("default.custom.yaml")
-        if !fileManager.fileExists(atPath: customDefault.path) {
-            let contents = """
-            patch:
-              schema_list:
-                - schema: rime_ice
-              translator/enable_user_dict: true
-            """
+        let contents = """
+        # Managed by PinyinKeyboard. Keep the mobile schema selected.
+        patch:
+          schema_list:
+            - schema: rime_ice
+          translator/enable_user_dict: true
+        """
+        let existingCustomDefault = try? String(contentsOf: customDefault, encoding: .utf8)
+        if existingCustomDefault?.contains("schema: rime_ice") != true
+            || existingCustomDefault?.contains("translator/enable_user_dict: true") != true {
             try contents.write(to: customDefault, atomically: true, encoding: .utf8)
         }
 
@@ -403,6 +452,9 @@ public final class RimeKitSessionDriver: RimeSessionDriver, @unchecked Sendable 
             try nativeSession.start()
         } catch {
             throw RimeEngineError.native(error.localizedDescription)
+        }
+        if let message = nativeSession.lastErrorMessage, !message.isEmpty {
+            throw RimeEngineError.native(message)
         }
         return snapshot(from: nativeSession.currentSnapshot())
     }
@@ -487,7 +539,9 @@ public final class RimeKitSessionDriver: RimeSessionDriver, @unchecked Sendable 
             pageIndex: native.pageIndex,
             pageSize: native.pageSize,
             hasNextPage: native.hasNextPage,
-            schemaID: native.schemaID
+            schemaID: native.schemaID,
+            deploymentStatus: native.deploymentStatus,
+            schemaSelected: native.schemaSelected
         )
     }
 }

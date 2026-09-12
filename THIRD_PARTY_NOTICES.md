@@ -38,9 +38,11 @@ CI 使用 `full.zip`，SHA256：
 
     675d23b070be00e1b800f9a6db033ef98f4493cd5b568ed8aa3b3541769c46ac
 
-该资源包包含 schema、词典、Lua、OpenCC 数据和 `LICENSE`。资源许可证为 GPL-3.0。资源作为未修改数据文件打包到 Swift package resource bundle；使用和再分发必须遵守资源包许可证。资源包的完整许可证文件随 IPA 保留。
+该资源包包含 schema、词典、Lua、OpenCC 数据和 `LICENSE`。资源许可证为 GPL-3.0。构建保留完整资源目录和词典依赖，并使用本项目的 `scripts/rime_ice.mobile.schema.yaml` 替换默认 schema，以适配固定静态包不含 Lua runtime 的边界；该适配文件不复制 Lua 实现。使用和再分发必须遵守资源包许可证。资源包的完整许可证文件随 IPA 保留。
 
 ## GuruIM 公开参考
+
+移动方案的简繁转换使用 OpenCC s2t.json 配置（BYVoid/OpenCC commit c363a7ba51d487950982bd8a589211ffbfd95ba1）和 SwiftyOpenCC 发布的 STCharacters.ocd2、STPhrases.ocd2 数据（commit 1d8105a0f7199c90af722bff62728050c858e777）。OpenCC 数据按 Apache-2.0，SwiftyOpenCC 包装按 MIT 处理；文件只作为 RIME 运行资源下载并打包，不链接 SwiftyOpenCC 代码。
 
 来源：[CauT/GuruIM](https://github.com/CauT/GuruIM)，参考固定提交 `bee7c4da71352753d5f4b6ea607cddea04b9dbe6`。GuruIM 代码仓库使用 MIT 加 Commons Clause；本项目不链接、复制或分发 GuruIM 代码，仅采用其公开的 RimeKit/librime/输入资源分层路线。该参考不改变本项目或上述组件的许可证。
 

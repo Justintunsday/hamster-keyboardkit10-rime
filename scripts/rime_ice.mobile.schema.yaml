@@ -1,0 +1,96 @@
+# RIME mobile schema for the pinned RimeStatic package.
+#
+# librime-xcframework 1.16.1-pack.8 exposes the core and OpenCC symbols but
+# does not include the Lua plugin. Keep the rime-ice dictionary and pinyin
+# speller, and remove unsupported Lua components from the keyboard schema.
+
+schema:
+  schema_id: rime_ice
+  name: 雾凇拼音
+  version: "2026.06.30-mobile"
+  description: |
+    雾凇拼音移动核心方案。
+    基于 rime-ice 词库，使用 librime core 组件。
+
+menu:
+  page_size: 5
+
+switches:
+  - name: ascii_mode
+    states: [ 中, Ａ ]
+  - name: ascii_punct
+    states: [ ¥, $ ]
+  - name: traditionalization
+    states: [ 简, 繁 ]
+
+ascii_composer:
+  good_old_caps_lock: true
+  switch_key:
+    Caps_Lock: clear
+    Shift_L: commit_code
+    Shift_R: noop
+    Control_L: noop
+    Control_R: noop
+
+engine:
+  processors:
+    - ascii_composer
+    - recognizer
+    - key_binder
+    - speller
+    - punctuator
+    - selector
+    - navigator
+    - express_editor
+  segmentors:
+    - ascii_segmentor
+    - matcher
+    - abc_segmentor
+    - punct_segmentor
+    - fallback_segmentor
+  translators:
+    - punct_translator
+    - script_translator
+  filters:
+    - simplifier@traditionalize
+    - uniquifier
+
+translator:
+  dictionary: rime_ice
+  enable_user_dict: true
+  enable_sentence: true
+  enable_word_completion: true
+  initial_quality: 1.2
+
+traditionalize:
+  option_name: traditionalization
+  opencc_config: s2t.json
+  tips: none
+  tags: [ abc ]
+
+speller:
+  alphabet: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
+  initials: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
+  delimiter: " '"
+  algebra:
+    - derive/^([nl])ve$/$1ue/
+    - derive/^([jqxy])u/$1v/
+    - derive/^([nl])ue$/$1ve/
+    - derive/^([jqxy])v/$1u/
+
+punctuator:
+  __include: default:/punctuator
+
+recognizer:
+  import_preset: default
+
+key_binder:
+  import_preset: default
+
+editor:
+  bindings:
+    space: confirm
+    Return: commit_raw_input
+    BackSpace: revert
+    Delete: delete
+    Escape: cancel

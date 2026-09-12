@@ -15,7 +15,7 @@ LocalPinyinEngine 使用独立的小型词表。引擎执行以下操作：
 3. 使用词频和完整匹配加分排序。
 4. 对词表拼音执行前缀检索。
 
-RimeEngineAdapter 默认创建 RimeKitSessionDriver。RimeKitBridge 只封装 librime 公共 C API；RimeResourceInstaller 负责把 CI 打包的雾凇资源复制到扩展 Application Support，并触发 RIME deploy。RIME 无法启动时进入显式错误状态，不调用 LocalPinyinEngine。
+RimeEngineAdapter 默认创建 RimeKitSessionDriver。RimeKitBridge 只封装 librime 公共 C API；RimeResourceInstaller 负责校验雾凇资源及依赖、复制到扩展 Application Support、加入 OpenCC 简繁转换资源、等待 maintenance thread、验证 build 输出和 schema。RimeStatic 1.16.1-pack.8 不含 Lua runtime，因此构建阶段用 `scripts/rime_ice.mobile.schema.yaml` 替换完整雾凇 schema，保留 rime-ice 全拼词典和用户词典，移除不可用的 `lua_*` 组件。RIME 无法启动、部署失败、schema 不匹配或 context 读取失败时进入显式错误状态，不调用 LocalPinyinEngine。
 
 ### KeyboardExtension
 

@@ -24,6 +24,8 @@ typedef NS_ENUM(NSInteger, RimeKitKeyProcessingResult) {
 @property(nonatomic, copy, readonly) NSString *rawInput;
 @property(nonatomic, copy, readonly, nullable) NSString *committedText;
 @property(nonatomic, copy, readonly) NSString *schemaID;
+@property(nonatomic, copy, readonly) NSString *deploymentStatus;
+@property(nonatomic, assign, readonly) BOOL schemaSelected;
 @property(nonatomic, copy, readonly) NSArray<RimeKitCandidate *> *candidates;
 @property(nonatomic, assign, readonly) NSInteger pageIndex;
 @property(nonatomic, assign, readonly) NSInteger pageSize;
@@ -36,6 +38,8 @@ typedef NS_ENUM(NSInteger, RimeKitKeyProcessingResult) {
                         rawInput:(NSString *)rawInput
                   committedText:(NSString * _Nullable)committedText
                         schemaID:(NSString *)schemaID
+                 deploymentStatus:(NSString *)deploymentStatus
+                   schemaSelected:(BOOL)schemaSelected
                       candidates:(NSArray<RimeKitCandidate *> *)candidates
                        pageIndex:(NSInteger)pageIndex
                         pageSize:(NSInteger)pageSize
