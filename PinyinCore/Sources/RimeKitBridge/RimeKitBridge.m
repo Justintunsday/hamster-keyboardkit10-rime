@@ -370,14 +370,7 @@ static BOOL RimeKitValidateDeploymentSchema(RimeApi_stdbool *api,
         if (!RimeKitValidateAPI(api, error)) {
             return NO;
         }
-        if (api->initialize == NULL || !api->initialize(NULL)) {
-            if (error != NULL) {
-                *error = [NSError errorWithDomain:RimeKitErrorDomain
-                                              code:RimeKitErrorSetupFailed
-                                          userInfo:@{NSLocalizedDescriptionKey: @"RIME initialize failed before maintenance"}];
-            }
-            return NO;
-        }
+        api->initialize(NULL);
 
         NSString *deploymentStatus = nil;
         if (!RimeKitEnsureDeployment(api,
@@ -470,15 +463,7 @@ static BOOL RimeKitValidateDeploymentSchema(RimeApi_stdbool *api,
                     : @"RIME API capability validation failed"];
                 return NO;
             }
-            if (api->initialize == NULL || !api->initialize(NULL)) {
-                [self recordDeploymentErrorMessage:@"RIME initialize failed for prepared data"];
-                if (error != NULL) {
-                    *error = [NSError errorWithDomain:RimeKitErrorDomain
-                                                  code:RimeKitErrorSetupFailed
-                                              userInfo:@{NSLocalizedDescriptionKey: @"RIME initialize failed for prepared data"}];
-                }
-                return NO;
-            }
+            api->initialize(NULL);
             _deploymentStatus = @"prepared";
             _sessionID = api->create_session();
         }
