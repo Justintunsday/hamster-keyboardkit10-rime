@@ -37,7 +37,14 @@ targets:
       - package: KeyboardKit
         product: KeyboardKit
         link: true
-        embed: true
+        embed: false
+    postBuildScripts:
+      - name: Embed KeyboardKit
+        basedOnDependencyAnalysis: false
+        script: |
+          set -e
+          mkdir -p "${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}"
+          ditto "${BUILT_PRODUCTS_DIR}/PackageFrameworks/KeyboardKit.framework" "${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/KeyboardKit.framework"
 
   PinyinKeyboardExtension:
     type: app-extension
