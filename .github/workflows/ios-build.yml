@@ -40,4 +40,4 @@ jobs:
         run: swift test
 
       - name: Build iOS Simulator without signing
-        run: xcodebuild -project PinyinKeyboard.xcodeproj -scheme PinyinKeyboard -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build
+        run: xcodebuild -project PinyinKeyboard.xcodeproj -scheme PinyinKeyboard -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO ARCHS=arm64 ONLY_ACTIVE_ARCH=YES build
