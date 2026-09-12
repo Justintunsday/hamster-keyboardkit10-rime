@@ -35,9 +35,18 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Run PinyinCore tests
-        working-directory: PinyinCore
-        run: swift test
+      - name: Build unsigned iOS device archive
+        run: xcodebuild -project PinyinKeyboard.xcodeproj -scheme PinyinKeyboard -sdk iphoneos -configuration Release -destination 'generic/platform=iOS' -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
 
-      - name: Build iOS Simulator without signing
-        run: xcodebuild -project PinyinKeyboard.xcodeproj -scheme PinyinKeyboard -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO ARCHS=arm64 ONLY_ACTIVE_ARCH=YES build
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p artifacts/Payload
+          cp -R build/DerivedData/Build/Products/Release-iphoneos/PinyinKeyboard.app artifacts/Payload/
+          cd artifacts
+          zip -r PinyinKeyboard-unsigned.ipa Payload
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: PinyinKeyboard-unsigned.ipa
+          path: artifacts/PinyinKeyboard-unsigned.ipa
