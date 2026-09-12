@@ -13,6 +13,27 @@ public enum RimeEngineError: Error, Equatable, Sendable {
     case native(String)
 }
 
+extension RimeEngineError: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .notConfigured:
+            return "RIME session driver is not configured"
+        case .notStarted:
+            return "RIME session is not started"
+        case .resourcesUnavailable:
+            return "RIME resources are unavailable"
+        case .native(let message):
+            return message
+        }
+    }
+}
+
+public enum RimeSessionStatus: Equatable, Sendable {
+    case idle
+    case ready
+    case failed(String)
+}
+
 /// Build-time and runtime boundary for the native RIME implementation.
 ///
 /// The bridge is a small Objective-C wrapper written for this project. It
@@ -149,6 +170,8 @@ public final class RimeSession {
     public let configuration: RimeSessionConfiguration
     public private(set) var snapshot: RimeSnapshot
     public private(set) var isStarted = false
+    public private(set) var status: RimeSessionStatus = .idle
+    public private(set) var lastError: RimeEngineError?
 
     private let driver: (any RimeSessionDriver)?
 
@@ -161,18 +184,44 @@ public final class RimeSession {
         self.snapshot = .empty
     }
 
+    public init(
+        configuration: RimeSessionConfiguration = RimeSessionConfiguration(),
+        failure: RimeEngineError
+    ) {
+        self.configuration = configuration
+        self.driver = nil
+        self.snapshot = .empty
+        self.status = .failed(failure.localizedDescription)
+        self.lastError = failure
+    }
+
     public func start() throws {
         guard let driver else {
-            throw RimeEngineError.notConfigured
+            let error = RimeEngineError.notConfigured
+            status = .failed(error.localizedDescription)
+            lastError = error
+            throw error
         }
 
-        snapshot = try driver.start()
-        isStarted = true
+        do {
+            snapshot = try driver.start()
+            isStarted = true
+            status = .ready
+            lastError = nil
+        } catch {
+            isStarted = false
+            let rimeError = error as? RimeEngineError ?? .native(error.localizedDescription)
+            status = .failed(rimeError.localizedDescription)
+            lastError = rimeError
+            driver.stop()
+            throw rimeError
+        }
     }
 
     public func stop() {
         driver?.stop()
         isStarted = false
+        status = .idle
         snapshot = .empty
     }
 
@@ -208,14 +257,28 @@ public final class RimeSession {
         _ operation: (any RimeSessionDriver) throws -> RimeSnapshot
     ) throws -> RimeSnapshot {
         guard isStarted, let driver else {
-            throw driver == nil
+            let error = driver == nil
                 ? RimeEngineError.notConfigured
                 : RimeEngineError.notStarted
+            status = .failed(error.localizedDescription)
+            lastError = error
+            throw error
         }
 
-        let nextSnapshot = try operation(driver)
-        snapshot = nextSnapshot
-        return nextSnapshot
+        do {
+            let nextSnapshot = try operation(driver)
+            snapshot = nextSnapshot
+            status = .ready
+            lastError = nil
+            return nextSnapshot
+        } catch {
+            let rimeError = error as? RimeEngineError ?? .native(error.localizedDescription)
+            status = .failed(rimeError.localizedDescription)
+            lastError = rimeError
+            isStarted = false
+            driver.stop()
+            throw rimeError
+        }
     }
 }
 
@@ -232,6 +295,17 @@ public struct RimeResourcePaths: Equatable, Sendable {
 public enum RimeResourceError: Error, Equatable, Sendable {
     case bundleResourceMissing
     case requiredFileMissing(String)
+}
+
+extension RimeResourceError: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .bundleResourceMissing:
+            return "Bundled RIME resource directory is missing"
+        case .requiredFileMissing(let file):
+            return "Required RIME resource is missing: \(file)"
+        }
+    }
 }
 
 public enum RimeResourceInstaller {
@@ -269,6 +343,7 @@ public enum RimeResourceInstaller {
         try fileManager.createDirectory(at: userURL, withIntermediateDirectories: true)
 
         let markerURL = sharedURL.appendingPathComponent(".pinyin-keyboard-resource-version")
+        let userMarkerURL = userURL.appendingPathComponent(".pinyin-keyboard-resource-version")
         let installedVersion = try? String(contentsOf: markerURL, encoding: .utf8)
         if installedVersion?.trimmingCharacters(in: .whitespacesAndNewlines) != resourceVersion {
             if fileManager.fileExists(atPath: sharedURL.path) {
@@ -278,12 +353,22 @@ public enum RimeResourceInstaller {
             try resourceVersion.write(to: markerURL, atomically: true, encoding: .utf8)
         }
 
+        let installedUserVersion = try? String(contentsOf: userMarkerURL, encoding: .utf8)
+        if installedUserVersion?.trimmingCharacters(in: .whitespacesAndNewlines) != resourceVersion {
+            let buildURL = userURL.appendingPathComponent("build", isDirectory: true)
+            if fileManager.fileExists(atPath: buildURL.path) {
+                try fileManager.removeItem(at: buildURL)
+            }
+            try resourceVersion.write(to: userMarkerURL, atomically: true, encoding: .utf8)
+        }
+
         let customDefault = userURL.appendingPathComponent("default.custom.yaml")
         if !fileManager.fileExists(atPath: customDefault.path) {
             let contents = """
             patch:
               schema_list:
                 - schema: rime_ice
+              translator/enable_user_dict: true
             """
             try contents.write(to: customDefault, atomically: true, encoding: .utf8)
         }
@@ -327,32 +412,60 @@ public final class RimeKitSessionDriver: RimeSessionDriver, @unchecked Sendable 
     }
 
     public func reset() throws -> RimeSnapshot {
-        snapshot(from: nativeSession.reset())
+        try checkedSnapshot {
+            nativeSession.reset()
+        }
     }
 
     public func process(_ key: RimeKey) throws -> RimeSnapshot {
         switch key {
         case .text(let text):
-            return snapshot(from: nativeSession.processText(text))
+            return try checkedSnapshot {
+                nativeSession.processText(text)
+            }
         case .backspace:
-            return snapshot(from: nativeSession.processBackspace())
+            return try checkedSnapshot {
+                nativeSession.processBackspace()
+            }
         case .space:
-            return snapshot(from: nativeSession.processSpace())
+            return try checkedSnapshot {
+                nativeSession.processSpace()
+            }
         case .enter:
-            return snapshot(from: nativeSession.processReturn())
+            return try checkedSnapshot {
+                nativeSession.processReturn()
+            }
         case .candidate(let index):
-            return snapshot(from: nativeSession.selectCandidate(at: index))
+            return try checkedSnapshot {
+                nativeSession.selectCandidate(at: index)
+            }
         case .reset:
-            return snapshot(from: nativeSession.reset())
+            return try checkedSnapshot {
+                nativeSession.reset()
+            }
         }
     }
 
     public func deleteBackward() throws -> RimeSnapshot {
-        snapshot(from: nativeSession.processBackspace())
+        try checkedSnapshot {
+            nativeSession.processBackspace()
+        }
     }
 
     public func selectCandidate(at index: Int) throws -> RimeSnapshot {
-        snapshot(from: nativeSession.selectCandidate(at: index))
+        try checkedSnapshot {
+            nativeSession.selectCandidate(at: index)
+        }
+    }
+
+    private func checkedSnapshot(
+        _ operation: () -> RimeKitSnapshot
+    ) throws -> RimeSnapshot {
+        let nativeSnapshot = operation()
+        if let message = nativeSession.lastErrorMessage, !message.isEmpty {
+            throw RimeEngineError.native(message)
+        }
+        return snapshot(from: nativeSnapshot)
     }
 
     private func snapshot(from native: RimeKitSnapshot) -> RimeSnapshot {
@@ -379,15 +492,11 @@ public final class RimeKitSessionDriver: RimeSessionDriver, @unchecked Sendable 
     }
 }
 
-/// PinyinEngine-compatible fallback surface. Stateful RIME operations are
-/// exposed through `makeBundledSession`; LocalPinyinEngine remains the only
-/// fallback when the native binary or resource set cannot start.
-public struct RimeEngineAdapter: PinyinEngine, Sendable {
-    private let fallback: LocalPinyinEngine
-
-    public init(fallback: LocalPinyinEngine = LocalPinyinEngine()) {
-        self.fallback = fallback
-    }
+/// Factory for the native librime session. This type has no local algorithm
+/// fallback. Resource, deployment, native initialization, and session errors
+/// are returned to the caller.
+public struct RimeEngineAdapter: Sendable {
+    public init() {}
 
     public var status: RimeEngineStatus {
         RimeResourceInstaller.hasBundledResources ? .configured : .unavailable
@@ -402,35 +511,20 @@ public struct RimeEngineAdapter: PinyinEngine, Sendable {
 
     public func makeBundledSession(
         applicationIdentifier: String = "PinyinKeyboard"
-    ) -> RimeSession? {
-        guard status == .configured,
-              let paths = try? RimeResourceInstaller.prepare(
+    ) throws -> RimeSession {
+        guard status == .configured else {
+            throw RimeEngineError.resourcesUnavailable
+        }
+        let paths: RimeResourcePaths
+        do {
+            paths = try RimeResourceInstaller.prepare(
                 applicationIdentifier: applicationIdentifier
-              ) else {
-            return nil
+            )
+        } catch {
+            throw RimeEngineError.native(error.localizedDescription)
         }
         let configuration = RimeSessionConfiguration()
         let driver = RimeKitSessionDriver(paths: paths, schemaID: configuration.schemaID)
         return RimeSession(configuration: configuration, driver: driver)
-    }
-
-    public func start() throws {
-        guard status == .configured else {
-            throw RimeEngineError.notConfigured
-        }
-    }
-
-    public func stop() {}
-
-    public func candidates(for input: String, limit: Int) -> [PinyinCandidate] {
-        fallback.candidates(for: input, limit: limit)
-    }
-
-    public func isValidInputPrefix(_ input: String) -> Bool {
-        fallback.isValidInputPrefix(input)
-    }
-
-    public func bestSegmentation(for input: String) -> [String]? {
-        fallback.bestSegmentation(for: input)
     }
 }

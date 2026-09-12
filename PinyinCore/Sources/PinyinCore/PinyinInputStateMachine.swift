@@ -4,19 +4,33 @@ public final class PinyinInputStateMachine {
     public static let maxCompositionLength = 64
 
     public private(set) var state: CompositionState
-    private let engine: PinyinEngine
+    private let localEngine: PinyinEngine?
     private let rimeSession: RimeSession?
 
     public init(
-        engine: PinyinEngine = LocalPinyinEngine(),
-        state: CompositionState = CompositionState(),
-        rimeSession: RimeSession? = nil
+        engine: PinyinEngine,
+        state: CompositionState = CompositionState()
     ) {
-        self.engine = engine
+        self.localEngine = engine
+        self.state = state
+        self.rimeSession = nil
+        self.state.runtimeStatus = .local
+    }
+
+    public init(
+        rimeSession: RimeSession,
+        state: CompositionState = CompositionState()
+    ) {
+        self.localEngine = nil
         self.state = state
         self.rimeSession = rimeSession
-        if let rimeSession, rimeSession.isStarted {
+        if rimeSession.isStarted {
+            self.state.runtimeStatus = .rimeReady
             apply(rimeSession.snapshot)
+        } else {
+            let message = rimeSession.lastError?.localizedDescription
+                ?? "RIME session is not started"
+            self.state.runtimeStatus = .rimeFailed(message)
         }
     }
 
@@ -28,7 +42,7 @@ public final class PinyinInputStateMachine {
 
         switch state.mode {
         case .chinese:
-            return rimeIsActive ? inputWithRime(text) : inputWithLocalEngine(text)
+            return rimeSession == nil ? inputWithLocalEngine(text) : inputWithRime(text)
 
         case .english:
             let output = state.isShifted || state.isCapsLocked
@@ -55,10 +69,11 @@ public final class PinyinInputStateMachine {
             return transition(shouldDeleteBackward: true, clearMarkedText: true)
         }
 
-        if rimeIsActive {
-            if processRime(.backspace) != nil {
+        if rimeSession != nil {
+            guard processRime(.backspace) != nil else {
                 return transition(clearMarkedText: true)
             }
+            return transition(clearMarkedText: true)
         }
 
         state.rawPinyin.removeLast()
@@ -72,7 +87,10 @@ public final class PinyinInputStateMachine {
             return transition()
         }
 
-        if rimeIsActive, let snapshot = processRime(.candidate(index)) {
+        if rimeSession != nil {
+            guard let snapshot = processRime(.candidate(index)) else {
+                return transition(clearMarkedText: true)
+            }
             return transition(
                 insertedText: snapshot.committedText,
                 clearMarkedText: true
@@ -88,18 +106,14 @@ public final class PinyinInputStateMachine {
     @discardableResult
     public func pressSpace() -> PinyinTransition {
         if state.mode == .chinese, !state.rawPinyin.isEmpty {
-            if rimeIsActive {
-                let originalRawPinyin = state.rawPinyin
-                if let snapshot = processRime(.space) {
-                    if let committedText = snapshot.committedText {
-                        return transition(insertedText: committedText, clearMarkedText: true)
-                    }
-                    let output = state.candidates.first?.text
-                        ?? (state.rawPinyin.isEmpty ? originalRawPinyin : state.rawPinyin)
-                    resetRimeComposition()
-                    clearComposition()
-                    return transition(insertedText: output, clearMarkedText: true)
+            if rimeSession != nil {
+                guard let snapshot = processRime(.space),
+                      let committedText = snapshot.committedText,
+                      !committedText.isEmpty else {
+                    markRimeFailure("RIME space key produced no committed text")
+                    return transition(clearMarkedText: true)
                 }
+                return transition(insertedText: committedText, clearMarkedText: true)
             }
 
             let output = state.candidates.first?.text ?? state.rawPinyin
@@ -112,17 +126,14 @@ public final class PinyinInputStateMachine {
     @discardableResult
     public func pressReturn() -> PinyinTransition {
         if state.mode == .chinese, !state.rawPinyin.isEmpty {
-            if rimeIsActive {
-                let originalRawPinyin = state.rawPinyin
-                if let snapshot = processRime(.enter) {
-                    if let committedText = snapshot.committedText {
-                        return transition(insertedText: committedText, clearMarkedText: true)
-                    }
-                    let output = state.rawPinyin.isEmpty ? originalRawPinyin : state.rawPinyin
-                    resetRimeComposition()
-                    clearComposition()
-                    return transition(insertedText: output, clearMarkedText: true)
+            if rimeSession != nil {
+                guard let snapshot = processRime(.enter),
+                      let committedText = snapshot.committedText,
+                      !committedText.isEmpty else {
+                    markRimeFailure("RIME return key produced no committed text")
+                    return transition(clearMarkedText: true)
                 }
+                return transition(insertedText: committedText, clearMarkedText: true)
             }
 
             let output = state.rawPinyin
@@ -137,10 +148,14 @@ public final class PinyinInputStateMachine {
         var pendingText: String?
         if state.mode == .chinese, !state.rawPinyin.isEmpty {
             let originalRawPinyin = state.rawPinyin
-            if rimeIsActive, let snapshot = processRime(.space) {
-                pendingText = snapshot.committedText
-                    ?? state.candidates.first?.text
-                    ?? (state.rawPinyin.isEmpty ? originalRawPinyin : state.rawPinyin)
+            if rimeSession != nil {
+                guard let snapshot = processRime(.space),
+                      let committedText = snapshot.committedText,
+                      !committedText.isEmpty else {
+                    markRimeFailure("RIME mode switch produced no committed text")
+                    return transition(clearMarkedText: true)
+                }
+                pendingText = committedText
             } else {
                 pendingText = state.candidates.first?.text ?? originalRawPinyin
             }
@@ -156,7 +171,14 @@ public final class PinyinInputStateMachine {
     public func synchronizeMode(_ mode: PinyinMode) -> PinyinTransition {
         state.mode = mode
         if mode == .chinese {
-            if !rimeIsActive {
+            if let rimeSession {
+                if rimeSession.isStarted {
+                    apply(rimeSession.snapshot)
+                } else {
+                    markRimeFailure(rimeSession.lastError?.localizedDescription
+                        ?? "RIME session is not started")
+                }
+            } else {
                 refreshCandidates()
             }
         } else {
@@ -188,10 +210,6 @@ public final class PinyinInputStateMachine {
         state.isCapsLocked.toggle()
         state.isShifted = state.isCapsLocked
         return transition()
-    }
-
-    private var rimeIsActive: Bool {
-        rimeSession?.isStarted == true
     }
 
     private func inputWithLocalEngine(_ text: String) -> PinyinTransition {
@@ -239,31 +257,21 @@ public final class PinyinInputStateMachine {
     }
 
     private func inputWithRime(_ text: String) -> PinyinTransition {
+        guard let rimeSession, rimeSession.isStarted else {
+            markRimeFailure(rimeSession?.lastError?.localizedDescription
+                ?? "RIME session is not started")
+            return transition(clearMarkedText: true)
+        }
+
         var accepted = false
         var insertedOutput = ""
 
         for character in text.lowercased() {
-            if let punctuation = chinesePunctuation(for: character) {
-                let originalRawPinyin = state.rawPinyin
-                if let snapshot = processRime(.text(String(character))) {
-                    if let committedText = snapshot.committedText {
-                        insertedOutput += committedText
-                    } else if !originalRawPinyin.isEmpty {
-                        insertedOutput += state.candidates.first?.text ?? originalRawPinyin
-                        resetRimeComposition()
-                        clearComposition()
-                        insertedOutput += punctuation
-                    } else if state.rawPinyin.isEmpty {
-                        insertedOutput += punctuation
-                    }
-                } else {
-                    if !originalRawPinyin.isEmpty {
-                        insertedOutput += state.candidates.first?.text ?? originalRawPinyin
-                    }
-                    resetRimeComposition()
-                    clearComposition()
-                    insertedOutput += punctuation
+            if chinesePunctuation(for: character) != nil {
+                guard let snapshot = processRime(.text(String(character))) else {
+                    break
                 }
+                insertedOutput += snapshot.committedText ?? ""
                 accepted = true
                 continue
             }
@@ -279,21 +287,16 @@ public final class PinyinInputStateMachine {
                 continue
             }
 
-            guard isASCIILetter(character), state.rawPinyin.count < Self.maxCompositionLength else {
+            guard isASCIILetter(character) else {
                 continue
             }
-
-            let originalRawPinyin = state.rawPinyin
-            if let snapshot = processRime(.text(String(character))) {
-                if let committedText = snapshot.committedText {
-                    insertedOutput += committedText
-                }
-                if state.rawPinyin == originalRawPinyin, snapshot.committedText == nil {
-                    appendFallbackLetter(character)
-                }
-            } else {
-                appendFallbackLetter(character)
+            guard state.rawPinyin.count < Self.maxCompositionLength else {
+                continue
             }
+            guard let snapshot = processRime(.text(String(character))) else {
+                break
+            }
+            insertedOutput += snapshot.committedText ?? ""
             accepted = true
         }
 
@@ -303,16 +306,10 @@ public final class PinyinInputStateMachine {
         )
     }
 
-    private func appendFallbackLetter(_ character: Character) {
-        guard state.rawPinyin.count < Self.maxCompositionLength else {
-            return
-        }
-        state.rawPinyin.append(character)
-        refreshCandidates()
-    }
-
     private func processRime(_ key: RimeKey) -> RimeSnapshot? {
         guard let rimeSession, rimeSession.isStarted else {
+            markRimeFailure(rimeSession?.lastError?.localizedDescription
+                ?? "RIME session is not started")
             return nil
         }
         do {
@@ -320,7 +317,7 @@ public final class PinyinInputStateMachine {
             apply(snapshot)
             return snapshot
         } catch {
-            rimeSession.stop()
+            markRimeFailure(error.localizedDescription)
             return nil
         }
     }
@@ -332,17 +329,27 @@ public final class PinyinInputStateMachine {
         if let snapshot = try? rimeSession.reset() {
             apply(snapshot)
         } else {
-            rimeSession.stop()
+            markRimeFailure(rimeSession.lastError?.localizedDescription
+                ?? "RIME composition reset failed")
         }
     }
 
     private func apply(_ snapshot: RimeSnapshot) {
+        state.runtimeStatus = .rimeReady
         state.rawPinyin = snapshot.rawInput.isEmpty ? snapshot.preedit : snapshot.rawInput
         state.candidates = snapshot.pinyinCandidates
     }
 
+    private func markRimeFailure(_ message: String) {
+        state.runtimeStatus = .rimeFailed(message)
+    }
+
     private func refreshCandidates() {
-        state.candidates = engine.candidates(for: state.rawPinyin, limit: 30)
+        guard let localEngine else {
+            markRimeFailure("RIME candidate state is unavailable")
+            return
+        }
+        state.candidates = localEngine.candidates(for: state.rawPinyin, limit: 30)
     }
 
     private func clearComposition() {

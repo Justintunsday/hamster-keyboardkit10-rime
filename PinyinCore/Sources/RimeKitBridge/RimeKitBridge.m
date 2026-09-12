@@ -112,8 +112,11 @@ static NSString *RimeKitString(const char *value) {
     NSString *_schemaID;
     RimeSessionId _sessionID;
     RimeKitSnapshot *_currentSnapshot;
+    NSString *_lastErrorMessage;
 }
-- (RimeKitSnapshot *)processKeyCode:(int)keyCode;
+- (BOOL)processKeyCode:(int)keyCode;
+- (void)recordErrorMessage:(NSString *)message;
+- (void)clearErrorMessage;
 - (NSString * _Nullable)consumeCommitWithAPI:(RimeApi_stdbool *)api;
 - (RimeKitSnapshot *)snapshotWithCommittedText:(NSString * _Nullable)committedText;
 @end
@@ -194,6 +197,8 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
 
 @implementation RimeKitSession
 
+@synthesize lastErrorMessage = _lastErrorMessage;
+
 - (instancetype)initWithSharedDataPath:(NSString *)sharedDataPath
                            userDataPath:(NSString *)userDataPath
                               schemaID:(NSString *)schemaID {
@@ -203,6 +208,7 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
         _userDataPath = [userDataPath copy];
         _schemaID = [schemaID copy];
         _sessionID = 0;
+        _lastErrorMessage = nil;
         _currentSnapshot = [[RimeKitSnapshot alloc] initWithPreedit:@""
                                                              rawInput:@""
                                                        committedText:nil
@@ -220,10 +226,12 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
 
 - (BOOL)start:(NSError **)error {
     @synchronized (self) {
+        [self clearErrorMessage];
         if (_sessionID != 0) {
             return YES;
         }
         if (!RimeKitIsDirectory(_sharedDataPath) || !RimeKitIsDirectory(_userDataPath)) {
+            [self recordErrorMessage:@"RIME data directories are unavailable"];
             if (error != NULL) {
                 *error = [NSError errorWithDomain:RimeKitErrorDomain
                                               code:RimeKitErrorInvalidConfiguration
@@ -235,9 +243,13 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
         RimeApi_stdbool *api = RimeKitAPI();
         @synchronized (RimeKitGlobalLock()) {
             if (!RimeKitSetup(api, _sharedDataPath, _userDataPath, error)) {
+                [self recordErrorMessage:error != NULL && *error != nil
+                    ? (*error).localizedDescription
+                    : @"RIME API setup failed"];
                 return NO;
             }
             if (api->initialize == NULL || api->create_session == NULL) {
+                [self recordErrorMessage:@"RIME initialization or session API is unavailable"];
                 if (error != NULL) {
                     *error = [NSError errorWithDomain:RimeKitErrorDomain
                                                   code:RimeKitErrorSetupFailed
@@ -247,12 +259,16 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
             }
             api->initialize(NULL);
             if (!RimeKitEnsureDeployment(api, _sharedDataPath, _userDataPath, error)) {
+                [self recordErrorMessage:error != NULL && *error != nil
+                    ? (*error).localizedDescription
+                    : @"RIME resource deployment failed"];
                 return NO;
             }
             _sessionID = api->create_session();
         }
 
         if (_sessionID == 0) {
+            [self recordErrorMessage:@"RIME session creation failed"];
             if (error != NULL) {
                 *error = [NSError errorWithDomain:RimeKitErrorDomain
                                               code:RimeKitErrorSessionFailed
@@ -265,6 +281,7 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
             if (!api->select_schema(_sessionID, _schemaID.UTF8String)) {
                 api->destroy_session(_sessionID);
                 _sessionID = 0;
+                [self recordErrorMessage:@"RIME schema selection failed"];
                 if (error != NULL) {
                     *error = [NSError errorWithDomain:RimeKitErrorDomain
                                                   code:RimeKitErrorSessionFailed
@@ -279,6 +296,14 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
     }
 }
 
+- (void)recordErrorMessage:(NSString *)message {
+    _lastErrorMessage = [message copy];
+}
+
+- (void)clearErrorMessage {
+    _lastErrorMessage = nil;
+}
+
 - (void)stop {
     @synchronized (self) {
         if (_sessionID != 0) {
@@ -288,6 +313,7 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
             }
             _sessionID = 0;
         }
+        [self clearErrorMessage];
         _currentSnapshot = [[RimeKitSnapshot alloc] initWithPreedit:@""
                                                              rawInput:@""
                                                        committedText:nil
@@ -316,8 +342,13 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
 
 - (RimeKitSnapshot *)reset {
     @synchronized (self) {
+        [self clearErrorMessage];
         RimeApi_stdbool *api = RimeKitAPI();
-        if (_sessionID != 0 && api != NULL && api->clear_composition != NULL) {
+        if (_sessionID == 0) {
+            [self recordErrorMessage:@"RIME session is not started"];
+        } else if (api == NULL || api->clear_composition == NULL) {
+            [self recordErrorMessage:@"RIME composition API is unavailable"];
+        } else {
             api->clear_composition(_sessionID);
         }
         _currentSnapshot = [self snapshotWithCommittedText:nil];
@@ -327,55 +358,84 @@ static BOOL RimeKitEnsureDeployment(RimeApi_stdbool *api,
 
 - (RimeKitSnapshot *)processText:(NSString *)text {
     @synchronized (self) {
-        if (_sessionID == 0 || text.length == 0) {
+        if (text.length == 0) {
             return _currentSnapshot;
         }
-        RimeApi_stdbool *api = RimeKitAPI();
-        if (api == NULL || api->process_key == NULL) {
+        [self clearErrorMessage];
+        if (_sessionID == 0) {
+            [self recordErrorMessage:@"RIME session is not started"];
             return _currentSnapshot;
         }
         for (NSUInteger index = 0; index < text.length; index++) {
-            [self processKeyCode:(int)[text characterAtIndex:index]];
+            if (![self processKeyCode:(int)[text characterAtIndex:index]]) {
+                break;
+            }
         }
         return _currentSnapshot;
     }
 }
 
-- (RimeKitSnapshot *)processKeyCode:(int)keyCode {
+- (BOOL)processKeyCode:(int)keyCode {
+    [self clearErrorMessage];
     RimeApi_stdbool *api = RimeKitAPI();
-    if (_sessionID != 0 && api != NULL && api->process_key != NULL) {
-        api->process_key(_sessionID, keyCode, 0);
+    if (_sessionID == 0) {
+        [self recordErrorMessage:@"RIME session is not started"];
+        return NO;
     }
+    if (api == NULL || api->process_key == NULL) {
+        [self recordErrorMessage:@"RIME process_key API is unavailable"];
+        return NO;
+    }
+    BOOL handled = api->process_key(_sessionID, keyCode, 0);
     NSString *commit = [self consumeCommitWithAPI:api];
     _currentSnapshot = [self snapshotWithCommittedText:commit];
-    return _currentSnapshot;
+    if (!handled) {
+        [self recordErrorMessage:[NSString stringWithFormat:@"RIME rejected key code %d", keyCode]];
+    }
+    return handled;
 }
 
 - (RimeKitSnapshot *)processBackspace {
     @synchronized (self) {
-        return [self processKeyCode:0x08];
+        [self processKeyCode:0x08];
+        return _currentSnapshot;
     }
 }
 
 - (RimeKitSnapshot *)processSpace {
     @synchronized (self) {
-        return [self processKeyCode:0x20];
+        [self processKeyCode:0x20];
+        return _currentSnapshot;
     }
 }
 
 - (RimeKitSnapshot *)processReturn {
     @synchronized (self) {
-        return [self processKeyCode:0x0d];
+        [self processKeyCode:0x0d];
+        return _currentSnapshot;
     }
 }
 
 - (RimeKitSnapshot *)selectCandidateAtIndex:(NSInteger)index {
     @synchronized (self) {
+        [self clearErrorMessage];
         RimeApi_stdbool *api = RimeKitAPI();
-        if (_sessionID != 0 && api != NULL && api->select_candidate_on_current_page != NULL && index >= 0) {
-            api->select_candidate_on_current_page(_sessionID, (size_t)index);
+        if (_sessionID == 0) {
+            [self recordErrorMessage:@"RIME session is not started"];
+        } else if (api == NULL || api->select_candidate_on_current_page == NULL || index < 0) {
+            [self recordErrorMessage:@"RIME candidate selection API is unavailable"];
+        } else if (!api->select_candidate_on_current_page(_sessionID, (size_t)index)) {
+            [self recordErrorMessage:@"RIME candidate selection failed"];
         }
         NSString *commit = [self consumeCommitWithAPI:api];
+        if (_lastErrorMessage == nil && commit.length == 0 && api->commit_composition != NULL) {
+            if (api->commit_composition(_sessionID)) {
+                commit = [self consumeCommitWithAPI:api];
+            }
+        }
+        if (_lastErrorMessage == nil && commit.length == 0) {
+            [self recordErrorMessage:@"RIME candidate selection produced no committed text"];
+        }
         _currentSnapshot = [self snapshotWithCommittedText:commit];
         return _currentSnapshot;
     }

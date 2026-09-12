@@ -53,6 +53,15 @@ private struct CandidateToolbar: View {
             }
             .padding(.horizontal, 8)
 
+            if case .rimeFailed(let message) = state.runtimeStatus {
+                Text("RIME 错误：\(message)")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.red)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 8)
+            }
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 4) {
                     if state.candidates.isEmpty {

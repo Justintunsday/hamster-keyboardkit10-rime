@@ -6,18 +6,38 @@ final class KeyboardSession: ObservableObject {
     private let machine: PinyinInputStateMachine
 
     init(engine: PinyinEngine? = nil) {
-        let rimeEngine = RimeEngineAdapter()
-        let rimeSession = rimeEngine.makeBundledSession(
-            applicationIdentifier: "PinyinKeyboard.KeyboardExtension"
-        )
-        if let rimeSession {
-            try? rimeSession.start()
+        if let engine {
+            let machine = PinyinInputStateMachine(engine: engine)
+            self.machine = machine
+            self.state = machine.state
+            return
         }
 
-        let machine = PinyinInputStateMachine(
-            engine: engine ?? rimeEngine,
-            rimeSession: rimeSession
-        )
+        let rimeSession: RimeSession
+        do {
+            let adapter = RimeEngineAdapter()
+            rimeSession = try adapter.makeBundledSession(
+                applicationIdentifier: "PinyinKeyboard.KeyboardExtension"
+            )
+            do {
+                try rimeSession.start()
+            } catch {
+                rimeSession.stop()
+                let failedSession = RimeSession(failure: .native(error.localizedDescription))
+                let failedMachine = PinyinInputStateMachine(rimeSession: failedSession)
+                self.machine = failedMachine
+                self.state = failedMachine.state
+                return
+            }
+        } catch {
+            let failedSession = RimeSession(failure: .native(error.localizedDescription))
+            let failedMachine = PinyinInputStateMachine(rimeSession: failedSession)
+            self.machine = failedMachine
+            self.state = failedMachine.state
+            return
+        }
+
+        let machine = PinyinInputStateMachine(rimeSession: rimeSession)
         self.machine = machine
         self.state = machine.state
     }

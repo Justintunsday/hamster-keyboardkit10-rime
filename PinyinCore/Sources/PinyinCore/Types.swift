@@ -20,6 +20,12 @@ public enum PinyinMode: String, CaseIterable, Codable, Equatable, Sendable {
     }
 }
 
+public enum PinyinRuntimeStatus: Equatable, Codable, Sendable {
+    case local
+    case rimeReady
+    case rimeFailed(String)
+}
+
 public struct PinyinCandidate: Identifiable, Hashable, Codable, Sendable {
     public let id: String
     public let text: String
@@ -50,19 +56,22 @@ public struct CompositionState: Equatable, Codable, Sendable {
     public var candidates: [PinyinCandidate]
     public var isShifted: Bool
     public var isCapsLocked: Bool
+    public var runtimeStatus: PinyinRuntimeStatus
 
     public init(
         mode: PinyinMode = .chinese,
         rawPinyin: String = "",
         candidates: [PinyinCandidate] = [],
         isShifted: Bool = false,
-        isCapsLocked: Bool = false
+        isCapsLocked: Bool = false,
+        runtimeStatus: PinyinRuntimeStatus = .local
     ) {
         self.mode = mode
         self.rawPinyin = rawPinyin
         self.candidates = candidates
         self.isShifted = isShifted
         self.isCapsLocked = isCapsLocked
+        self.runtimeStatus = runtimeStatus
     }
 
     public var isComposing: Bool {

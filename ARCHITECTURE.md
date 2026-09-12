@@ -15,11 +15,11 @@ LocalPinyinEngine 使用独立的小型词表。引擎执行以下操作：
 3. 使用词频和完整匹配加分排序。
 4. 对词表拼音执行前缀检索。
 
-RimeEngineAdapter 默认创建 RimeKitSessionDriver。RimeKitBridge 只封装 librime 公共 C API；RimeResourceInstaller 负责把 CI 打包的雾凇资源复制到扩展 Application Support。RIME 无法启动时由 LocalPinyinEngine 回退。
+RimeEngineAdapter 默认创建 RimeKitSessionDriver。RimeKitBridge 只封装 librime 公共 C API；RimeResourceInstaller 负责把 CI 打包的雾凇资源复制到扩展 Application Support，并触发 RIME deploy。RIME 无法启动时进入显式错误状态，不调用 LocalPinyinEngine。
 
 ### KeyboardExtension
 
-KeyboardSession 默认创建 RimeEngineAdapter 和 RimeSession，启动失败时保留 LocalPinyinEngine。KeyboardViewController 初始化 KeyboardKit，安装 PinyinActionHandler，创建标准 KeyboardView，并根据模式更新 KeyboardKit keyboard context。
+KeyboardSession 默认创建 RimeEngineAdapter 和持久 RimeSession，启动失败时保留失败状态和错误文本。KeyboardViewController 初始化 KeyboardKit，安装 PinyinActionHandler，创建标准 KeyboardView，并根据模式更新 KeyboardKit keyboard context。
 
 PinyinActionHandler 将 KeyboardKit action 映射到核心状态机：
 
@@ -44,7 +44,7 @@ PinyinKeyboardView 在标准 KeyboardKit 视图上方增加候选栏和模式栏
         -> PinyinActionHandler
         -> KeyboardSession
         -> PinyinInputStateMachine
-        -> RimeSession / LocalPinyinEngine
+        -> RimeSession
         -> PinyinTransition
         -> TextDocumentProxyAdapter
         -> UITextDocumentProxy

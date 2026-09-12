@@ -1,6 +1,6 @@
 # Pinyin Keyboard
 
-从零实现的 iOS 16+ 简体中文 26 键拼音输入法工程。中文输入默认使用本地 RIME 会话；缺少 RIME 资源或 native session 启动失败时回退到独立 LocalPinyinEngine。
+从零实现的 iOS 16+ 简体中文 26 键拼音输入法工程。中文输入默认使用实际链接的 librime 会话；缺少 RIME 资源或 native session 启动失败时显示明确错误，不回退到手写算法。
 
 ## 范围
 
@@ -14,11 +14,11 @@
 - Shift、Caps Lock、空格、回车、地球键、模式切换。
 - 中文标点映射。
 - RIME 默认方案：librime `RimeStatic 1.16.1-pack.8` 与雾凇拼音 `2026.06.30`。
-- LocalPinyinEngine 仅作为明确回退。其词表不代表生产级覆盖率，不声称达到搜狗或百度的专有排序质量。
+- LocalPinyinEngine 仅供显式测试或离线对照注入。生产默认路径不创建、不调用该实现。
 
 ## 架构
 
-- PinyinCore：Swift Package。实现状态机、独立 LocalPinyinEngine、RimeKit 风格 Objective-C bridge、RIME session/snapshot 边界和资源安装器。
+- PinyinCore：Swift Package。实现状态机、显式 LocalPinyinEngine 测试实现、RimeKit 风格 Objective-C bridge、持久 RIME session/snapshot 边界和资源安装器。
 - KeyboardExtension：UITextDocumentProxy 适配、KeyboardKit action handler、候选栏和标准键盘视图。
 - App：启用步骤、隐私说明、离线状态和设置入口。
 - project.yml：XcodeGen 工程描述。
@@ -43,4 +43,4 @@ KeyboardKit 固定为 10.9.4。只使用公开 KeyboardInputViewController、Key
 
 ## 许可证和来源
 
-原始代码使用 MIT 许可证，见 LICENSE。KeyboardKit、LicenseKit、librime、librime-xcframework 和雾凇拼音资源保留各自许可证，见 THIRD_PARTY_NOTICES.md。本项目不复制 GuruIM 源代码；仅按其公开的 RIMEKit/librime/资源分层路线实现独立边界。本实现的 LocalPinyinEngine 词表由本项目手工编写，不复制专有词库、模型或资源。
+原始代码使用 MIT 许可证，见 LICENSE。KeyboardKit、LicenseKit、librime、librime-xcframework 和雾凇拼音资源保留各自许可证，见 THIRD_PARTY_NOTICES.md。本项目不复制 GuruIM 源代码；仅按其公开的 RIMEKit/librime/资源分层路线实现独立边界。本实现的 LocalPinyinEngine 词表由本项目手工编写，不复制专有词库、模型或资源，且不属于默认运行路径。

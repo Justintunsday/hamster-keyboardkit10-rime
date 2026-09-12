@@ -56,6 +56,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (RimeKitSnapshot *)selectCandidateAtIndex:(NSInteger)index;
 
 @property(nonatomic, assign, readonly) BOOL available;
+@property(nonatomic, copy, readonly, nullable) NSString *lastErrorMessage;
 @end
 
 NS_ASSUME_NONNULL_END

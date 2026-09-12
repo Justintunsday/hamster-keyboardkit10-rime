@@ -11,8 +11,9 @@ struct ContentView: View {
                 }
 
                 Section("运行状态") {
-                    LabeledContent("引擎", value: "LocalPinyinEngine")
-                    LabeledContent("词库", value: "内置小型词表")
+                    LabeledContent("引擎", value: "librime 1.16.1-pack.8")
+                    LabeledContent("词库", value: "rime-ice 2026.06.30")
+                    LabeledContent("失败处理", value: "显示错误，不回退")
                     LabeledContent("网络处理", value: "禁用")
                     LabeledContent("开放访问", value: "禁用")
                 }
